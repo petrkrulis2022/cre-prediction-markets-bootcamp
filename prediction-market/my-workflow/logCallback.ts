@@ -1,7 +1,21 @@
 // prediction-market/my-workflow/logCallback.ts
 
-import { type Runtime, type EVMLog, bytesToHex } from "@chainlink/cre-sdk";
-import { decodeEventLog, parseAbi } from "viem";
+import {
+  cre,
+  type Runtime,
+  type EVMLog,
+  getNetwork,
+  bytesToHex,
+  encodeCallMsg,
+  LAST_FINALIZED_BLOCK_NUMBER,
+} from "@chainlink/cre-sdk";
+import {
+  decodeEventLog,
+  parseAbi,
+  encodeFunctionData,
+  decodeFunctionResult,
+  zeroAddress,
+} from "viem";
 
 type Config = {
   geminiModel: string;
@@ -12,20 +26,58 @@ type Config = {
   }>;
 };
 
+interface Market {
+  creator: string;
+  createdAt: number;
+  settledAt: number;
+  settled: boolean;
+  confidence: number;
+  outcome: number;
+  totalYesPool: bigint;
+  totalNoPool: bigint;
+  question: string;
+}
+
 // Define the SettlementRequested event ABI
-// This matches: event SettlementRequested(uint256 indexed marketId, string question);
 const EVENT_ABI = parseAbi([
   "event SettlementRequested(uint256 indexed marketId, string question)",
 ]);
 
+// Define the getMarket function ABI for reading
+const GET_MARKET_ABI = [
+  {
+    name: "getMarket",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "marketId", type: "uint256" }],
+    outputs: [
+      {
+        name: "",
+        type: "tuple",
+        components: [
+          { name: "creator", type: "address" },
+          { name: "createdAt", type: "uint48" },
+          { name: "settledAt", type: "uint48" },
+          { name: "settled", type: "bool" },
+          { name: "confidence", type: "uint16" },
+          { name: "outcome", type: "uint8" },
+          { name: "totalYesPool", type: "uint256" },
+          { name: "totalNoPool", type: "uint256" },
+          { name: "question", type: "string" },
+        ],
+      },
+    ],
+  },
+] as const;
+
 export function onLogTrigger(runtime: Runtime<Config>, log: EVMLog): string {
   runtime.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-  runtime.log("CRE Workflow: Log Trigger - Settlement Requested");
+  runtime.log("CRE Workflow: Log Trigger + EVM Read - Settlement Workflow");
   runtime.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
   try {
     // ─────────────────────────────────────────────────────────────
-    // Step 1: Convert the EVMLog data to hex format for viem
+    // Step 1: Decode the SettlementRequested event
     // ─────────────────────────────────────────────────────────────
     const topics = log.topics.map((t: Uint8Array) => bytesToHex(t)) as [
       `0x${string}`,
@@ -33,51 +85,97 @@ export function onLogTrigger(runtime: Runtime<Config>, log: EVMLog): string {
     ];
     const data = bytesToHex(log.data);
 
-    runtime.log("[Step 1] Received event log from blockchain");
-    runtime.log(
-      `[Step 1] Topics: ${topics.length} (topic[0] is event signature)`,
-    );
-    runtime.log(`[Step 1] Data length: ${data.length} characters`);
-
-    // ─────────────────────────────────────────────────────────────
-    // Step 2: Decode the event using viem
-    // ─────────────────────────────────────────────────────────────
     const decodedLog = decodeEventLog({
       abi: EVENT_ABI,
       data,
       topics,
     });
 
-    runtime.log("[Step 2] Event decoded successfully!");
-
-    // ─────────────────────────────────────────────────────────────
-    // Step 3: Extract the event arguments
-    // ─────────────────────────────────────────────────────────────
     const marketId = decodedLog.args.marketId as bigint;
     const question = decodedLog.args.question as string;
 
-    runtime.log(`[Step 3] Settlement requested for Market #${marketId}`);
-    runtime.log(`[Step 3] Market question: "${question}"`);
+    runtime.log(`[Step 1] Settlement requested for Market #${marketId}`);
+    runtime.log(`[Step 1] Market question: "${question}"`);
 
     // ─────────────────────────────────────────────────────────────
-    // Step 4: Log additional event metadata
+    // Step 2: Read market details from contract (EVM Read)
     // ─────────────────────────────────────────────────────────────
-    const contractAddress = bytesToHex(log.address);
-    const blockNumber = log.blockNumber;
-    const txHash = bytesToHex(log.txHash);
+    runtime.log("[Step 2] Reading market data from contract...");
 
-    runtime.log(`[Step 4] Event emitted from: ${contractAddress}`);
-    runtime.log(`[Step 4] Block number: ${blockNumber}`);
-    runtime.log(`[Step 4] Transaction hash: ${txHash}`);
+    const evmConfig = runtime.config.evms[0];
+    const network = getNetwork({
+      chainFamily: "evm",
+      chainSelectorName: evmConfig.chainSelectorName,
+      isTestnet: true,
+    });
 
+    if (!network) {
+      throw new Error(`Unknown chain: ${evmConfig.chainSelectorName}`);
+    }
+
+    const evmClient = new cre.capabilities.EVMClient(
+      network.chainSelector.selector,
+    );
+
+    // Encode the getMarket function call
+    const callData = encodeFunctionData({
+      abi: GET_MARKET_ABI,
+      functionName: "getMarket",
+      args: [marketId],
+    });
+
+    // Call the contract
+    const readResult = evmClient
+      .callContract(runtime, {
+        call: encodeCallMsg({
+          from: zeroAddress,
+          to: evmConfig.marketAddress as `0x${string}`,
+          data: callData,
+        }),
+        blockNumber: LAST_FINALIZED_BLOCK_NUMBER,
+      })
+      .result();
+
+    // Decode the market data
+    const market = decodeFunctionResult({
+      abi: GET_MARKET_ABI,
+      functionName: "getMarket",
+      data: bytesToHex(readResult.data),
+    }) as Market;
+
+    runtime.log("[Step 2] ✓ Market data retrieved:");
+    runtime.log(`  Creator: ${market.creator}`);
+    runtime.log(`  Created At: ${market.createdAt}`);
+    runtime.log(`  Settled: ${market.settled}`);
+    runtime.log(
+      `  Yes Pool: ${(Number(market.totalYesPool) / 1e18).toFixed(4)} ETH`,
+    );
+    runtime.log(
+      `  No Pool: ${(Number(market.totalNoPool) / 1e18).toFixed(4)} ETH`,
+    );
+
+    // ─────────────────────────────────────────────────────────────
+    // Step 3: Check if market is already settled
+    // ─────────────────────────────────────────────────────────────
+    if (market.settled) {
+      runtime.log("[Step 3] Market is already settled, exiting");
+      return "Market already settled";
+    }
+
+    runtime.log("[Step 3] ✓ Market is active and ready for settlement");
+
+    // ─────────────────────────────────────────────────────────────
+    // Step 4: Ready for AI evaluation (next chapter)
+    // ─────────────────────────────────────────────────────────────
     runtime.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    runtime.log("✓ Ready for settlement workflow!");
-    runtime.log("  Next: EVM Read → Gemini AI → EVM Write");
+    runtime.log("✓ Ready for next steps:");
+    runtime.log("  → Step 4: Call Gemini AI to determine outcome");
+    runtime.log("  → Step 5: Write settlement to contract");
     runtime.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
-    return `Processed settlement request for Market #${marketId}`;
+    return `Market #${marketId} ready for AI evaluation`;
   } catch (error) {
-    runtime.log(`[ERROR] Failed to decode event: ${error}`);
-    return "Error processing event";
+    runtime.log(`[ERROR] Failed to process settlement: ${error}`);
+    return "Error processing settlement";
   }
 }

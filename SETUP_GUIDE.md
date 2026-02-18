@@ -1653,11 +1653,23 @@ If you see a market, you're ready for Day 2! ✅ If all zeros, create a market f
     - Event decoded: marketId = 0, question = "Will Bitcoin reach $100k by end of 2026?"
     - Workflow output: "Processed settlement request for Market #0"
     - Event topics: 2 (signature + indexed marketId)
-- [03. EVM Read - Reading Contract State](https://smartcontractkit.github.io/cre-bootcamp-2026/day-2/03-evm-read.html) ⏳ **Starting Now**
-  - Fetch market data from contract
-  - Create `readCallback.ts` to read market details
-  - Log market information for AI evaluation
-- [04. HTTP Capability & Gemini AI](https://smartcontractkit.github.io/cre-bootcamp-2026/day-2/04-http-capability.html) ⏳ Pending
+- [03. EVM Read - Reading Contract State](https://smartcontractkit.github.io/cre-bootcamp-2026/day-2/03-evm-read.html) ✅ **Complete & Tested**
+  - Fetch market data from contract ✓
+  - Read market details using EVMClient.callContract() ✓
+  - Decode function results with decodeFunctionResult() ✓
+  - Verify market state before settlement ✓
+  - **Test Results (Feb 18, 2026):**
+    - Event decoded: Market #0, "Will Bitcoin reach $100k by end of 2026?" ✓
+    - EVM Read successful: called `getMarket(0)` ✓
+    - Market data retrieved:
+      - Creator: `0x6ef27E391c7eac228c26300aA92187382cc7fF8a` ✓
+      - Created At: `1771405164` (Unix timestamp) ✓
+      - Settled: `false` (active market) ✓
+      - Yes Pool: `0.0000 ETH`, No Pool: `0.0000 ETH` ✓
+    - Market ready for AI evaluation ✓
+    - Workflow output: "Market #0 ready for AI evaluation" ✓
+- [04. HTTP Capability & Gemini AI](https://smartcontractkit.github.io/cre-bootcamp-2026/day-2/04-http-capability.html) ⏳ **Starting Now**
+  - HTTP capability for external API calls
   - Call Gemini API to determine market outcome
   - Send market data to AI
   - Parse AI response for settlement
