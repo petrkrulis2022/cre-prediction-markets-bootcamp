@@ -1575,6 +1575,88 @@ Use these links to continue learning and building:
 - [07. Settlement Listener - Event Processing](https://smartcontractkit.github.io/cre-bootcamp-2026/day-1/07-settlement-listener.html) ⏳ **Next**
 - [08. Gemini Integration - AI Evaluation](https://smartcontractkit.github.io/cre-bootcamp-2026/day-1/08-gemini-integration.html) ⏳ Pending
 
+---
+
+### CRE Bootcamp Day 2 - Market Settlement
+
+**Day 2 Architecture:**
+
+```
+requestSettlement() ──▶ SettlementRequested Event
+                              │
+                              ▼
+                        CRE Log Trigger
+                              │
+                    ┌─────────┼──────────┐
+                    ▼         ▼          ▼
+                EVM Read   Gemini AI   EVM Write
+              (read data) (resolve)   (settle)
+```
+
+### Pre-Day 2 Verification
+
+Before implementing Log Triggers, verify your market exists on-chain:
+
+**Get market address from config:**
+```bash
+cd /home/petrunix/cre-ai-predicition-markets/prediction-market
+
+# View your market contract address
+cat my-workflow/config.staging.json | grep marketAddress
+```
+
+**Check market details:**
+```bash
+# Query market #0 from your contract
+cast call 0x5E8Aa6C48008B787B432764A7943e07A68b3c098 \
+  "getMarket(uint256) returns ((address,uint48,uint48,bool,uint16,uint8,uint256,uint256,string))" \
+  0 \
+  --rpc-url "https://ethereum-sepolia-rpc.publicnode.com"
+```
+
+**Expected Output (if market exists):**
+```
+(0x6ef27E391c7eac228c26300aA92187382cc7fF8a, 1771405164, 0, false, 0, 0, 0, 0, "Your question here")
+```
+
+**Decoded:**
+- Creator: `0x6ef27E391c7eac228c26300aA92187382cc7fF8a`
+- CreatedAt: `1771405164` (Unix timestamp)
+- Settled At: `0` (not settled yet)
+- Settled Status: `false`
+- Fee Percent: `0`
+- Resolution Source: `0`
+- Yes Pool: `0 ETH`
+- No Pool: `0 ETH`
+- Question: `"Will Bitcoin reach $100k by end of 2026?"`
+
+If you see a market, you're ready for Day 2! ✅ If all zeros, create a market first via the frontend.
+
+**Day 2 Chapters:**
+
+- [01. Recap & Q&A](https://smartcontractkit.github.io/cre-bootcamp-2026/day-2/01-recap.html) ✅ Reviewed
+  - Day 1 summary (HTTP Trigger → EVM Write)
+  - Two-step write pattern review
+  - Multiple triggers in one workflow
+- [02. Log Trigger - Event-Driven Workflows](https://smartcontractkit.github.io/cre-bootcamp-2026/day-2/02-log-trigger.html) ⏳ **Starting Now**
+  - React to on-chain events (SettlementRequested)
+  - Decode event data using viem
+  - Create `logCallback.ts` with event parsing
+  - Update `main.ts` with Log Trigger registration
+  - Test with dry-run simulation
+- [03. EVM Read - Reading Contract State](https://smartcontractkit.github.io/cre-bootcamp-2026/day-2/03-evm-read.html) ⏳ Pending
+  - Fetch market data from contract
+  - Create `readCallback.ts` to read market details
+  - Log market information for AI evaluation
+- [04. HTTP Capability & Gemini AI](https://smartcontractkit.github.io/cre-bootcamp-2026/day-2/04-http-capability.html) ⏳ Pending
+  - Call Gemini API to determine market outcome
+  - Send market data to AI
+  - Parse AI response for settlement
+- [05. Complete Settlement Flow](https://smartcontractkit.github.io/cre-bootcamp-2026/day-2/05-settlement-complete.html) ⏳ Pending
+  - Wire Log Trigger → EVM Read → Gemini AI → EVM Write
+  - End-to-end settlement workflow
+  - Full test with real market settlement
+
 ### Official Documentation
 
 - [Foundry Book](https://book.getfoundry.sh/)
