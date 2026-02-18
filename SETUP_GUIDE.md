@@ -1598,6 +1598,7 @@ requestSettlement() ──▶ SettlementRequested Event
 Before implementing Log Triggers, verify your market exists on-chain:
 
 **Get market address from config:**
+
 ```bash
 cd /home/petrunix/cre-ai-predicition-markets/prediction-market
 
@@ -1606,6 +1607,7 @@ cat my-workflow/config.staging.json | grep marketAddress
 ```
 
 **Check market details:**
+
 ```bash
 # Query market #0 from your contract
 cast call 0x5E8Aa6C48008B787B432764A7943e07A68b3c098 \
@@ -1615,11 +1617,13 @@ cast call 0x5E8Aa6C48008B787B432764A7943e07A68b3c098 \
 ```
 
 **Expected Output (if market exists):**
+
 ```
 (0x6ef27E391c7eac228c26300aA92187382cc7fF8a, 1771405164, 0, false, 0, 0, 0, 0, "Your question here")
 ```
 
 **Decoded:**
+
 - Creator: `0x6ef27E391c7eac228c26300aA92187382cc7fF8a`
 - CreatedAt: `1771405164` (Unix timestamp)
 - Settled At: `0` (not settled yet)
@@ -1638,13 +1642,18 @@ If you see a market, you're ready for Day 2! ✅ If all zeros, create a market f
   - Day 1 summary (HTTP Trigger → EVM Write)
   - Two-step write pattern review
   - Multiple triggers in one workflow
-- [02. Log Trigger - Event-Driven Workflows](https://smartcontractkit.github.io/cre-bootcamp-2026/day-2/02-log-trigger.html) ⏳ **Starting Now**
-  - React to on-chain events (SettlementRequested)
-  - Decode event data using viem
-  - Create `logCallback.ts` with event parsing
-  - Update `main.ts` with Log Trigger registration
-  - Test with dry-run simulation
-- [03. EVM Read - Reading Contract State](https://smartcontractkit.github.io/cre-bootcamp-2026/day-2/03-evm-read.html) ⏳ Pending
+- [02. Log Trigger - Event-Driven Workflows](https://smartcontractkit.github.io/cre-bootcamp-2026/day-2/02-log-trigger.html) ✅ **Complete & Tested**
+  - React to on-chain events (SettlementRequested) ✓
+  - Decode event data using viem ✓
+  - Create `logCallback.ts` with event parsing ✓
+  - Update `main.ts` with Log Trigger registration ✓
+  - Test with dry-run simulation ✓
+  - **Test Results (Feb 18, 2026):**
+    - TX: `0xec83c305a4e3de79ced217dd13993e2e054949bf72fd30d7287fcf5e8e82153e`
+    - Event decoded: marketId = 0, question = "Will Bitcoin reach $100k by end of 2026?"
+    - Workflow output: "Processed settlement request for Market #0"
+    - Event topics: 2 (signature + indexed marketId)
+- [03. EVM Read - Reading Contract State](https://smartcontractkit.github.io/cre-bootcamp-2026/day-2/03-evm-read.html) ⏳ **Starting Now**
   - Fetch market data from contract
   - Create `readCallback.ts` to read market details
   - Log market information for AI evaluation
@@ -1656,6 +1665,26 @@ If you see a market, you're ready for Day 2! ✅ If all zeros, create a market f
   - Wire Log Trigger → EVM Read → Gemini AI → EVM Write
   - End-to-end settlement workflow
   - Full test with real market settlement
+
+### Log Trigger vs CRON Trigger: Key Differences
+
+Understanding when to use each trigger type:
+
+| Aspect             | Log Trigger                                                            | CRON Trigger                                      |
+| ------------------ | ---------------------------------------------------------------------- | ------------------------------------------------- |
+| **When it fires**  | On-chain event emitted                                                 | Scheduled interval (hourly, daily, etc.)          |
+| **Style**          | Reactive                                                               | Proactive                                         |
+| **Use case**       | "When X happens, do Y"                                                 | "Check every hour for X"                          |
+| **Example**        | `requestSettlement()` → Settlement Requested event → Log Trigger fires | Every hour → Check all markets → Settle if needed |
+| **Response time**  | Instant (seconds)                                                      | Delayed (up to interval time)                     |
+| **Efficiency**     | Only runs when event occurs                                            | Runs on schedule even if nothing happened         |
+| **Resource usage** | Low (event-driven)                                                     | Medium (periodic polling)                         |
+| **Best for**       | Time-sensitive actions                                                 | Batch operations                                  |
+
+**For your prediction market:**
+
+- **Log Trigger (Day 2):** Settlement triggered by event → Real-time settlement
+- **CRON Trigger (Future):** Automated checks → Batch settle multiple markets
 
 ### Official Documentation
 
