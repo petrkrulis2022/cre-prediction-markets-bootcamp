@@ -6,7 +6,9 @@ import {
   type EVMLog,
   getNetwork,
   bytesToHex,
+  hexToBase64,
   encodeCallMsg,
+  TxStatus,
   LAST_FINALIZED_BLOCK_NUMBER,
 } from "@chainlink/cre-sdk";
 import {
@@ -14,8 +16,11 @@ import {
   parseAbi,
   encodeFunctionData,
   decodeFunctionResult,
+  encodeAbiParameters,
+  parseAbiParameters,
   zeroAddress,
 } from "viem";
+import { askGemini } from "./gemini";
 
 type Config = {
   geminiModel: string;
@@ -70,9 +75,14 @@ const GET_MARKET_ABI = [
   },
 ] as const;
 
+// ABI parameters for settlement encoding (outcome as uint8: 0=YES, 1=NO)
+const SETTLEMENT_PARAMS = parseAbiParameters(
+  "uint256 marketId, uint8 outcome, uint16 confidence",
+);
+
 export function onLogTrigger(runtime: Runtime<Config>, log: EVMLog): string {
   runtime.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-  runtime.log("CRE Workflow: Log Trigger + EVM Read - Settlement Workflow");
+  runtime.log("CRE Workflow: Log Trigger - Settle Market");
   runtime.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
   try {
@@ -165,17 +175,107 @@ export function onLogTrigger(runtime: Runtime<Config>, log: EVMLog): string {
     runtime.log("[Step 3] ✓ Market is active and ready for settlement");
 
     // ─────────────────────────────────────────────────────────────
-    // Step 4: Ready for AI evaluation (next chapter)
+    // Step 4: Query Gemini AI for market outcome (HTTP Call)
     // ─────────────────────────────────────────────────────────────
-    runtime.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    runtime.log("✓ Ready for next steps:");
-    runtime.log("  → Step 4: Call Gemini AI to determine outcome");
-    runtime.log("  → Step 5: Write settlement to contract");
-    runtime.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    runtime.log("[Step 4] Calling Gemini AI to determine outcome...");
 
-    return `Market #${marketId} ready for AI evaluation`;
+    const geminiResult = askGemini(runtime, question);
+
+    // Parse Gemini response - extract JSON if wrapped in text
+    let aiResponse;
+    try {
+      aiResponse = JSON.parse(geminiResult.geminiResponse);
+    } catch (parseError) {
+      // Try to extract JSON from text response
+      const jsonMatch = geminiResult.geminiResponse.match(
+        /\{[\s\S]*"result"[\s\S]*"confidence"[\s\S]*\}/,
+      );
+      if (jsonMatch) {
+        aiResponse = JSON.parse(jsonMatch[0]);
+        runtime.log(`[Step 4] Extracted JSON from text response`);
+      } else {
+        // Fallback: default to NO if we can't parse
+        runtime.log(
+          `[Step 4] Warning: Could not parse Gemini JSON, defaulting to NO`,
+        );
+        aiResponse = { result: "NO", confidence: 0 };
+      }
+    }
+
+    // Validate result
+    if (!["YES", "NO"].includes(aiResponse.result)) {
+      throw new Error(
+        `Invalid AI result: ${aiResponse.result}. Must be YES or NO.`,
+      );
+    }
+    if (aiResponse.confidence < 0 || aiResponse.confidence > 10000) {
+      throw new Error(
+        `Invalid confidence: ${aiResponse.confidence}. Must be 0-10000.`,
+      );
+    }
+
+    // Convert YES/NO to outcome uint8 (0=YES, 1=NO)
+    const outcomeValue = aiResponse.result === "YES" ? 0 : 1;
+    const confidence = aiResponse.confidence;
+
+    runtime.log(
+      `[Step 4] ✓ AI Response: ${aiResponse.result} (confidence: ${confidence}/10000)`,
+    );
+
+    // ─────────────────────────────────────────────────────────────
+    // Step 5: Write settlement report to contract (EVM Write)
+    // ─────────────────────────────────────────────────────────────
+    runtime.log("[Step 5] Generating and submitting settlement report...");
+
+    // Encode settlement data (marketId, outcome, confidence)
+    const settlementData = encodeAbiParameters(SETTLEMENT_PARAMS, [
+      marketId,
+      outcomeValue,
+      confidence,
+    ]);
+
+    // Prepend 0x01 prefix so contract routes to _settleMarket
+    const reportData = ("0x01" + settlementData.slice(2)) as `0x${string}`;
+
+    // Generate signed CRE report
+    const reportResponse = runtime
+      .report({
+        encodedPayload: hexToBase64(reportData),
+        encoderName: "evm",
+        signingAlgo: "ecdsa",
+        hashingAlgo: "keccak256",
+      })
+      .result();
+
+    // Submit to contract via EVM Write
+    const writeResult = evmClient
+      .writeReport(runtime, {
+        receiver: evmConfig.marketAddress,
+        report: reportResponse,
+        gasConfig: {
+          gasLimit: evmConfig.gasLimit,
+        },
+      })
+      .result();
+
+    if (writeResult.txStatus === TxStatus.SUCCESS) {
+      const txHash = bytesToHex(writeResult.txHash || new Uint8Array(32));
+      runtime.log(`[Step 5] ✓ Transaction successful: ${txHash}`);
+      runtime.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      runtime.log("✓ SETTLEMENT COMPLETE");
+      runtime.log(`  Market #${marketId}: "${question}"`);
+      runtime.log(`  Outcome: ${aiResponse.result} (${outcomeValue})`);
+      runtime.log(`  Confidence: ${confidence}/10000`);
+      runtime.log(`  Transaction: ${txHash}`);
+      runtime.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      return txHash;
+    }
+
+    throw new Error(`Settlement transaction failed: ${writeResult.txStatus}`);
   } catch (error) {
-    runtime.log(`[ERROR] Failed to process settlement: ${error}`);
-    return "Error processing settlement";
+    const msg = error instanceof Error ? error.message : String(error);
+    runtime.log(`[ERROR] ${msg}`);
+    runtime.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    throw error;
   }
 }

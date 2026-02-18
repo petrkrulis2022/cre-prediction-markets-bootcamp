@@ -261,7 +261,7 @@
         <input
           type="text"
           id="questionInput"
-          placeholder="e.g., Will Bitcoin reach $100k by end of 2026?"
+          placeholder="e.g., Did Argentina win the 2022 FIFA World Cup?"
           disabled
         />
       </div>
@@ -289,6 +289,247 @@
       >
         Create Market
       </button>
+
+      <!-- Prediction Section -->
+      <div
+        id="predictionSection"
+        style="
+          display: none;
+          margin-top: 40px;
+          padding-top: 30px;
+          border-top: 2px solid #e5e7eb;
+        "
+      >
+        <h2 style="color: #333; font-size: 20px; margin-bottom: 20px">
+          📊 Place Prediction
+        </h2>
+
+        <div class="form-group">
+          <label for="marketIdInput">Market ID</label>
+          <input
+            type="number"
+            id="marketIdInput"
+            placeholder="e.g., 0"
+            min="0"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="amountInput">Amount (ETH)</label>
+          <input
+            type="number"
+            id="amountInput"
+            placeholder="e.g., 0.01"
+            min="0"
+            step="0.001"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>Prediction</label>
+          <div style="display: flex; gap: 10px">
+            <button
+              class="button"
+              id="yesBtn"
+              onclick="predictYes()"
+              style="flex: 1; background: #10b981"
+            >
+              ✓ Predict YES
+            </button>
+            <button
+              class="button"
+              id="noBtn"
+              onclick="predictNo()"
+              style="flex: 1; background: #ef4444"
+            >
+              ✗ Predict NO
+            </button>
+          </div>
+        </div>
+
+        <!-- Market Info -->
+        <div
+          id="marketInfo"
+          class="status-section"
+          style="display: none; margin-top: 20px"
+        >
+          <div class="status-label">Market Details</div>
+          <div style="font-size: 12px; color: #666; margin-top: 8px">
+            <div style="margin-bottom: 6px">
+              <strong>Question:</strong> <span id="infQuestion">--</span>
+            </div>
+            <div style="margin-bottom: 6px">
+              <strong>Status:</strong> <span id="infStatus">--</span>
+            </div>
+            <div style="margin-bottom: 6px">
+              <strong>Yes Pool:</strong> <span id="infYesPool">--</span> ETH
+            </div>
+            <div>
+              <strong>No Pool:</strong> <span id="infNoPool">--</span> ETH
+            </div>
+          </div>
+        </div>
+
+        <!-- Settlement Section -->
+        <div
+          style="
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+          "
+        >
+          <h3 style="color: #333; font-size: 16px; margin-bottom: 15px">
+            🔔 Request Settlement
+          </h3>
+          <p style="color: #666; font-size: 12px; margin-bottom: 15px">
+            Trigger CRE to evaluate market with AI
+          </p>
+
+          <div class="form-group">
+            <label for="settlementMarketIdInput">Market ID to Settle</label>
+            <input
+              type="number"
+              id="settlementMarketIdInput"
+              placeholder="e.g., 0"
+              min="0"
+            />
+          </div>
+
+          <button
+            class="button"
+            id="settlementBtn"
+            onclick="requestSettlement()"
+            style="width: 100%; background: #8b5cf6"
+          >
+            🚀 Request Settlement
+          </button>
+
+          <button
+            class="button"
+            id="checkStatusBtn"
+            onclick="checkSettlementStatus()"
+            style="
+              width: 100%;
+              background: #06b6d4;
+              margin-top: 10px;
+              display: none;
+            "
+          >
+            🔍 Check Settlement Status
+          </button>
+        </div>
+      </div>
+
+      <!-- Check My Prediction -->
+      <div
+        style="
+          background: white;
+          padding: 20px;
+          border-radius: 12px;
+          margin-top: 30px;
+          border-left: 4px solid #8b5cf6;
+          border-top: 2px solid #e5e7eb;
+        "
+      >
+        <h2 style="color: #333; font-size: 20px; margin-bottom: 20px">
+          📊 Check My Prediction
+        </h2>
+
+        <div
+          style="display: flex; gap: 12px; margin-bottom: 15px; flex-wrap: wrap"
+        >
+          <input
+            type="number"
+            id="checkPredictionMarketId"
+            placeholder="Market ID"
+            min="0"
+            style="
+              flex: 1;
+              min-width: 120px;
+              padding: 10px;
+              border: 1px solid #ddd;
+              border-radius: 6px;
+              font-size: 14px;
+            "
+          />
+          <input
+            type="text"
+            id="predictorWallet"
+            placeholder="0x6ef27E391c7eac228c26300aA92187382cc7fF8a"
+            value="0x6ef27E391c7eac228c26300aA92187382cc7fF8a"
+            style="
+              flex: 1.5;
+              min-width: 200px;
+              padding: 10px;
+              border: 1px solid #ddd;
+              border-radius: 6px;
+              font-size: 14px;
+              font-family: monospace;
+            "
+          />
+          <button
+            class="button"
+            onclick="checkMyPrediction()"
+            style="
+              background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%);
+              min-width: 120px;
+            "
+          >
+            📋 Check Bet
+          </button>
+        </div>
+        <div
+          id="predictionResult"
+          style="margin-top: 15px; display: none"
+        ></div>
+      </div>
+
+      <!-- Claim Winnings -->
+      <div
+        style="
+          background: white;
+          padding: 20px;
+          border-radius: 12px;
+          margin-top: 30px;
+          border-left: 4px solid #10b981;
+          border-top: 2px solid #e5e7eb;
+        "
+      >
+        <h2 style="color: #333; font-size: 20px; margin-bottom: 20px">
+          💰 Claim Winnings
+        </h2>
+
+        <div
+          style="display: flex; gap: 12px; margin-bottom: 15px; flex-wrap: wrap"
+        >
+          <input
+            type="number"
+            id="claimMarketId"
+            placeholder="Market ID"
+            min="0"
+            style="
+              flex: 1;
+              min-width: 120px;
+              padding: 10px;
+              border: 1px solid #ddd;
+              border-radius: 6px;
+              font-size: 14px;
+            "
+          />
+          <button
+            class="button"
+            onclick="claimWinnings()"
+            style="
+              background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+              min-width: 120px;
+              font-weight: bold;
+            "
+          >
+            🎉 Claim Reward
+          </button>
+        </div>
+        <div id="claimResult" style="margin-top: 15px; display: none"></div>
+      </div>
 
       <!-- Result -->
       <div class="result" id="result">
@@ -350,6 +591,96 @@
           outputs: [
             { internalType: "uint256", name: "marketId", type: "uint256" },
           ],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            { internalType: "uint256", name: "marketId", type: "uint256" },
+            { internalType: "uint8", name: "prediction", type: "uint8" },
+          ],
+          name: "predict",
+          outputs: [],
+          stateMutability: "payable",
+          type: "function",
+        },
+        {
+          inputs: [
+            { internalType: "uint256", name: "marketId", type: "uint256" },
+          ],
+          name: "getMarket",
+          outputs: [
+            {
+              components: [
+                { internalType: "address", name: "creator", type: "address" },
+                { internalType: "uint48", name: "createdAt", type: "uint48" },
+                { internalType: "uint48", name: "settledAt", type: "uint48" },
+                { internalType: "bool", name: "settled", type: "bool" },
+                { internalType: "uint16", name: "confidence", type: "uint16" },
+                { internalType: "uint8", name: "outcome", type: "uint8" },
+                {
+                  internalType: "uint256",
+                  name: "totalYesPool",
+                  type: "uint256",
+                },
+                {
+                  internalType: "uint256",
+                  name: "totalNoPool",
+                  type: "uint256",
+                },
+                { internalType: "string", name: "question", type: "string" },
+              ],
+              internalType: "struct PredictionMarket.Market",
+              name: "",
+              type: "tuple",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "marketCount",
+          outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            { internalType: "uint256", name: "marketId", type: "uint256" },
+          ],
+          name: "requestSettlement",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            { internalType: "uint256", name: "marketId", type: "uint256" },
+            { internalType: "address", name: "predictor", type: "address" },
+          ],
+          name: "getPrediction",
+          outputs: [
+            {
+              components: [
+                { internalType: "uint256", name: "amount", type: "uint256" },
+                { internalType: "uint8", name: "prediction", type: "uint8" },
+                { internalType: "bool", name: "claimed", type: "bool" },
+              ],
+              internalType: "struct PredictionMarket.Prediction",
+              name: "",
+              type: "tuple",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            { internalType: "uint256", name: "marketId", type: "uint256" },
+          ],
+          name: "claim",
+          outputs: [],
           stateMutability: "nonpayable",
           type: "function",
         },
@@ -435,6 +766,7 @@
           document.getElementById("addressSection").style.display = "block";
           document.getElementById("questionInput").disabled = false;
           document.getElementById("createBtn").style.display = "block";
+          document.getElementById("predictionSection").style.display = "block";
           document.getElementById("connectBtn").style.display = "none";
           document.getElementById("disconnectBtn").style.display = "block";
         } else {
@@ -444,6 +776,7 @@
           document.getElementById("addressSection").style.display = "none";
           document.getElementById("questionInput").disabled = true;
           document.getElementById("createBtn").style.display = "none";
+          document.getElementById("predictionSection").style.display = "none";
           document.getElementById("connectBtn").style.display = "block";
           document.getElementById("disconnectBtn").style.display = "none";
         }
@@ -584,6 +917,515 @@
       function clearResult() {
         document.getElementById("result").classList.remove("show");
       }
+
+      // Load market info for prediction
+      async function loadMarketInfo() {
+        const marketId = document.getElementById("marketIdInput").value.trim();
+
+        if (!marketId || isNaN(marketId)) {
+          document.getElementById("marketInfo").style.display = "none";
+          return;
+        }
+
+        try {
+          const marketData = await contract.methods.getMarket(marketId).call();
+
+          document.getElementById("infQuestion").textContent = marketData[8];
+          document.getElementById("infStatus").textContent = marketData[3]
+            ? "🔒 Settled"
+            : "🟢 Active";
+          document.getElementById("infYesPool").textContent = (
+            marketData[6] / 1e18
+          ).toFixed(4);
+          document.getElementById("infNoPool").textContent = (
+            marketData[7] / 1e18
+          ).toFixed(4);
+
+          document.getElementById("marketInfo").style.display = "block";
+        } catch (error) {
+          console.error("Error loading market:", error);
+          document.getElementById("marketInfo").style.display = "none";
+        }
+      }
+
+      // Predict YES (0)
+      async function predictYes() {
+        await makePrediction(0);
+      }
+
+      // Predict NO (1)
+      async function predictNo() {
+        await makePrediction(1);
+      }
+
+      // Make a prediction
+      async function makePrediction(predictionValue) {
+        const marketId = document.getElementById("marketIdInput").value.trim();
+        const amount = document.getElementById("amountInput").value.trim();
+
+        if (!marketId || isNaN(marketId)) {
+          showResult("Please enter a valid market ID", true);
+          return;
+        }
+
+        if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
+          showResult("Please enter a valid amount in ETH", true);
+          return;
+        }
+
+        if (!userAccount) {
+          showResult("Please connect MetaMask first", true);
+          return;
+        }
+
+        try {
+          const predictionText = predictionValue === 0 ? "YES" : "NO";
+          console.log("=== PLACE PREDICTION ===");
+          console.log("Market ID:", marketId);
+          console.log("Prediction:", predictionText);
+          console.log("Amount:", amount, "ETH");
+          console.log("Predictor:", userAccount);
+          console.log("Timestamp:", new Date().toISOString());
+
+          showResult(
+            '<span class="loader"></span>Placing prediction...',
+            false,
+            "loading",
+          );
+
+          // Convert ETH to Wei
+          const amountWei = web3.utils.toWei(amount, "ether");
+
+          // Send prediction transaction
+          const result = await contract.methods
+            .predict(marketId, predictionValue)
+            .send({
+              from: userAccount,
+              value: amountWei,
+              gas: 200000,
+            });
+
+          const txHash = result.transactionHash;
+          const gasUsed = result.gasUsed;
+          const etherscanUrl = `https://sepolia.etherscan.io/tx/${txHash}`;
+
+          console.log("✓ Transaction Confirmed!");
+          console.log("Transaction Hash:", txHash);
+          console.log("Gas Used:", gasUsed);
+          console.log("Amount Sent:", amount, "ETH");
+
+          // Get updated market data
+          const marketData = await contract.methods.getMarket(marketId).call();
+          console.log("\n=== UPDATED MARKET DATA ===");
+          console.log("Question:", marketData[8]);
+          console.log("Yes Pool:", (marketData[6] / 1e18).toFixed(4), "ETH");
+          console.log("No Pool:", (marketData[7] / 1e18).toFixed(4), "ETH");
+
+          // Update UI
+          document.getElementById("resultLabel").textContent =
+            `✓ Prediction Placed: ${predictionText}!`;
+          document.getElementById("resultValue").textContent = txHash;
+          document.getElementById("detailedResults").innerHTML = `
+            <div style="background: #f5f5f5; padding: 10px; border-radius: 6px; font-size: 12px;">
+              <div style="margin-bottom: 8px;"><strong>Transaction:</strong> ${txHash.slice(0, 20)}...</div>
+              <div style="margin-bottom: 8px;"><strong>Prediction:</strong> ${predictionText}</div>
+              <div style="margin-bottom: 8px;"><strong>Amount:</strong> ${amount} ETH</div>
+              <div style="margin-bottom: 8px;"><strong>Gas Used:</strong> ${gasUsed.toLocaleString()}</div>
+              <div style="margin-bottom: 8px;"><strong>Updated Yes Pool:</strong> ${(marketData[6] / 1e18).toFixed(4)} ETH</div>
+              <div><strong>Updated No Pool:</strong> ${(marketData[7] / 1e18).toFixed(4)} ETH</div>
+            </div>
+          `;
+          document.getElementById("detailedResults").style.display = "block";
+
+          document.getElementById("etherscanLink").href = etherscanUrl;
+          document.getElementById("etherscanLink").style.display =
+            "inline-block";
+
+          console.log("View on Etherscan:", etherscanUrl);
+          console.log("======================\n");
+        } catch (error) {
+          console.error("❌ Error placing prediction:", error);
+          showResult("Error: " + (error.message || error), true);
+          document.getElementById("etherscanLink").style.display = "none";
+        }
+      }
+
+      // Request settlement for a market
+      async function requestSettlement() {
+        const marketId = document
+          .getElementById("settlementMarketIdInput")
+          .value.trim();
+
+        if (!marketId || isNaN(marketId)) {
+          showResult("Please enter a valid market ID to settle", true);
+          return;
+        }
+
+        if (!userAccount) {
+          showResult("Please connect MetaMask first", true);
+          return;
+        }
+
+        try {
+          console.log("=== REQUEST SETTLEMENT ===");
+          console.log("Market ID:", marketId);
+          console.log("Requester:", userAccount);
+          console.log("Timestamp:", new Date().toISOString());
+
+          showResult(
+            '<span class="loader"></span>Requesting settlement...',
+            false,
+            "loading",
+          );
+
+          // Send requestSettlement transaction
+          const result = await contract.methods
+            .requestSettlement(marketId)
+            .send({
+              from: userAccount,
+              gas: 100000,
+            });
+
+          const txHash = result.transactionHash;
+          const gasUsed = result.gasUsed;
+          const etherscanUrl = `https://sepolia.etherscan.io/tx/${txHash}`;
+
+          console.log("✓ Settlement Requested!");
+          console.log("Transaction Hash:", txHash);
+          console.log("Gas Used:", gasUsed);
+          console.log("Market ID:", marketId);
+
+          // Update UI
+          document.getElementById("resultLabel").textContent =
+            "✓ Settlement Requested!";
+          document.getElementById("resultValue").textContent = txHash;
+          document.getElementById("detailedResults").innerHTML = `
+            <div style="background: #f5f5f5; padding: 10px; border-radius: 6px; font-size: 12px;">
+              <div style="margin-bottom: 8px;"><strong>Transaction:</strong> ${txHash.slice(0, 20)}...</div>
+              <div style="margin-bottom: 8px;"><strong>Market ID:</strong> ${marketId}</div>
+              <div style="margin-bottom: 8px;"><strong>Action:</strong> SettlementRequested event emitted</div>
+              <div style="margin-bottom: 8px;"><strong>Gas Used:</strong> ${gasUsed.toLocaleString()}</div>
+              <div style="margin-bottom: 8px; color: #10b981; font-weight: bold;">🔔 CRE Log Trigger will now evaluate this market with Gemini AI</div>
+              <div>⏳ Check your CRE workflow logs for settlement progress</div>
+            </div>
+          `;
+          document.getElementById("detailedResults").style.display = "block";
+
+          document.getElementById("etherscanLink").href = etherscanUrl;
+          document.getElementById("etherscanLink").style.display =
+            "inline-block";
+
+          console.log("View on Etherscan:", etherscanUrl);
+          console.log("Waiting for CRE settlement...\n");
+
+          // Show status check button
+          document.getElementById("checkStatusBtn").style.display = "block";
+        } catch (error) {
+          console.error("❌ Error requesting settlement:", error);
+          showResult("Error: " + (error.message || error), true);
+          document.getElementById("etherscanLink").style.display = "none";
+        }
+      }
+
+      // Check settlement status and display AI outcome
+      async function checkSettlementStatus() {
+        const marketId = document
+          .getElementById("settlementMarketIdInput")
+          .value.trim();
+
+        if (!marketId || isNaN(marketId)) {
+          showResult("Please enter a valid market ID", true);
+          return;
+        }
+
+        try {
+          showResult(
+            '<span class="loader"></span>Checking settlement status...',
+            false,
+            "loading",
+          );
+
+          // Fetch market data from contract
+          const marketData = await contract.methods.getMarket(marketId).call();
+
+          console.log("=== SETTLEMENT STATUS ===");
+          console.log("Market ID:", marketId);
+          console.log("Question:", marketData[8]);
+          console.log("Settled:", marketData[3]);
+          console.log("Outcome:", marketData[5]);
+          console.log("Confidence:", marketData[4]);
+
+          if (!marketData[3]) {
+            // Market not settled yet
+            showResult(
+              "⏳ Market not settled yet. CRE is still evaluating...",
+              false,
+            );
+          } else {
+            // Market settled - show outcome
+            const outcomeValue = parseInt(marketData[5]);
+            const confidenceValue = parseInt(marketData[4]);
+            const outcomeText = outcomeValue === 0 ? "YES ✓" : "NO ✗";
+            const confidencePercent = ((confidenceValue / 10000) * 100).toFixed(
+              2,
+            );
+
+            document.getElementById("resultLabel").textContent =
+              "✅ SETTLEMENT COMPLETE - AI OUTCOME";
+            document.getElementById("resultValue").textContent = outcomeText;
+            document.getElementById("detailedResults").innerHTML = `
+              <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 15px; border-radius: 6px; color: white; font-size: 12px;">
+                <div style="margin-bottom: 10px; font-size: 14px; font-weight: bold;">🤖 Gemini AI Resolution</div>
+                <div style="margin-bottom: 8px;"><strong>Question:</strong> ${marketData[8]}</div>
+                <div style="margin-bottom: 8px;"><strong>AI Outcome:</strong> <span style="font-size: 14px; font-weight: bold;">${outcomeText}</span></div>
+                <div style="margin-bottom: 8px;"><strong>Confidence:</strong> ${confidencePercent}% (${confidenceValue}/10000)</div>
+                <div style="margin-bottom: 8px;"><strong>Settled At:</strong> ${new Date(parseInt(marketData[2]) * 1000).toLocaleString()}</div>
+                <div style="padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.3);">
+                  <div style="margin-bottom: 4px;"><strong>Market Pools:</strong></div>
+                  <div>Yes: ${(marketData[6] / 1e18).toFixed(4)} ETH</div>
+                  <div>No: ${(marketData[7] / 1e18).toFixed(4)} ETH</div>
+                </div>
+              </div>
+            `;
+            document.getElementById("detailedResults").style.display = "block";
+
+            console.log("✓ Settlement Complete!");
+            console.log("Outcome:", outcomeText);
+            console.log("Confidence:", confidencePercent + "%");
+          }
+        } catch (error) {
+          console.error("❌ Error checking status:", error);
+          showResult("Error: " + (error.message || error), true);
+        }
+      }
+
+      // Check my prediction for a specific market
+      async function checkMyPrediction() {
+        const marketId = document
+          .getElementById("checkPredictionMarketId")
+          .value.trim();
+        const predictorWallet = document
+          .getElementById("predictorWallet")
+          .value.trim();
+
+        if (!marketId || isNaN(marketId)) {
+          showResult("Please enter a valid market ID", true);
+          return;
+        }
+
+        if (!predictorWallet || !predictorWallet.startsWith("0x")) {
+          showResult("Please enter a valid wallet address", true);
+          return;
+        }
+
+        try {
+          console.log("=== CHECK MY PREDICTION ===");
+          console.log("Market ID:", marketId);
+          console.log("Predictor:", predictorWallet);
+
+          showResult(
+            '<span class="loader"></span>Fetching prediction...',
+            false,
+            "loading",
+          );
+
+          // Call getPrediction on contract
+          const prediction = await contract.methods
+            .getPrediction(marketId, predictorWallet)
+            .call();
+
+          console.log("Prediction Data:", prediction);
+
+          const amount = prediction[0];
+          const predictionValue = prediction[1];
+          const claimed = prediction[2];
+
+          const amountETH = (amount / 1e18).toFixed(4);
+          const predictionText = predictionValue === 0 ? "YES ✓" : "NO ✗";
+          const claimedStatus = claimed ? "✓ Claimed" : "⏳ Pending";
+          const claimedColor = claimed ? "#10b981" : "#f59e0b";
+
+          console.log("✓ Prediction Retrieved!");
+          console.log("Amount:", amountETH, "ETH");
+          console.log("Prediction:", predictionText);
+          console.log("Claimed:", claimedStatus);
+
+          // Get market info for context
+          const marketData = await contract.methods.getMarket(marketId).call();
+          const settled = marketData[3];
+          const outcome = marketData[5];
+          const outcomeText = outcome === 0 ? "YES ✓" : "NO ✗";
+          const isWinner = predictionValue === outcome;
+          const winnerText = isWinner ? "🎉 WINNER" : "❌ LOSER";
+          const winnerColor = isWinner ? "#10b981" : "#ef4444";
+
+          // Update UI with results
+          document.getElementById("resultLabel").textContent =
+            "📊 Your Prediction Details";
+          document.getElementById("resultValue").textContent =
+            `${predictionText} (${amountETH} ETH)`;
+          document.getElementById("detailedResults").innerHTML = `
+            <div style="background: linear-gradient(135deg, #f3e8ff 0%, #ede9fe 100%); padding: 15px; border-radius: 6px; color: #333; font-size: 12px;">
+              <div style="margin-bottom: 12px; font-size: 14px; font-weight: bold;">💰 Your Bet</div>
+              <div style="margin-bottom: 8px;">
+                <strong>Your Prediction:</strong> <span style="font-size: 14px; font-weight: bold;">${predictionText}</span>
+              </div>
+              <div style="margin-bottom: 8px;">
+                <strong>Amount Staked:</strong> <span style="font-size: 14px; font-weight: bold;">${amountETH} ETH</span>
+              </div>
+              <div style="margin-bottom: 8px;">
+                <strong>Claimed:</strong> <span style="font-size: 12px; font-weight: bold; color: ${claimedColor};">${claimedStatus}</span>
+              </div>
+              <div style="margin-bottom: 12px; padding-top: 8px; border-top: 1px solid rgba(0,0,0,0.1);">
+                <strong>Market Result:</strong> ${settled ? "🔒 Settled" : "🟢 Active"}
+              </div>
+              ${
+                settled
+                  ? `
+                <div style="background: white; padding: 10px; border-radius: 6px; margin-top: 10px;">
+                  <div style="margin-bottom: 8px;">
+                    <strong>Market Outcome:</strong> <span style="font-size: 14px; font-weight: bold;">${outcomeText}</span>
+                  </div>
+                  <div style="margin-bottom: 8px;">
+                    <strong>Your Status:</strong> <span style="font-size: 14px; font-weight: bold; color: ${winnerColor};">${winnerText}</span>
+                  </div>
+                  <div style="font-size: 11px; color: #666; margin-top: 8px;">
+                    ${isWinner && !claimed ? "✨ You can claim your winnings!" : isWinner && claimed ? "✅ Winnings claimed!" : "Better luck next time!"}
+                  </div>
+                </div>
+              `
+                  : `
+                <div style="font-size: 11px; color: #666; margin-top: 8px;">
+                  ⏳ Waiting for market settlement...
+                </div>
+              `
+              }
+            </div>
+          `;
+          document.getElementById("detailedResults").style.display = "block";
+
+          console.log("Market Outcome:", outcomeText);
+          console.log("Your Status:", winnerText);
+          console.log("=========================");
+        } catch (error) {
+          console.error("❌ Error checking prediction:", error);
+          showResult("Error: " + (error.message || error), true);
+        }
+      }
+
+      // Claim winnings for a market
+      async function claimWinnings() {
+        const marketId = document.getElementById("claimMarketId").value.trim();
+
+        if (!marketId || isNaN(marketId)) {
+          showResult("Please enter a valid market ID", true);
+          return;
+        }
+
+        if (!userAccount) {
+          showResult("Please connect MetaMask first", true);
+          return;
+        }
+
+        try {
+          console.log("=== CLAIM WINNINGS ===");
+          console.log("Market ID:", marketId);
+          console.log("Claimant:", userAccount);
+          console.log("Timestamp:", new Date().toISOString());
+
+          showResult(
+            '<span class="loader"></span>Claiming winnings...',
+            false,
+            "loading",
+          );
+
+          // First check if user won this market
+          const prediction = await contract.methods
+            .getPrediction(marketId, userAccount)
+            .call();
+          const marketData = await contract.methods.getMarket(marketId).call();
+
+          if (!marketData[3]) {
+            // Market not settled yet
+            showResult(
+              "Market has not been settled yet. You cannot claim yet.",
+              true,
+            );
+            return;
+          }
+
+          if (prediction[2]) {
+            // Already claimed
+            showResult("You have already claimed your winnings!", true);
+            return;
+          }
+
+          const userPrediction = prediction[1]; // 0 = YES, 1 = NO
+          const actualOutcome = marketData[5]; // 0 = YES, 1 = NO
+          const isWinner = userPrediction === actualOutcome;
+
+          if (!isWinner) {
+            showResult(
+              "You predicted incorrectly. No winnings to claim.",
+              true,
+            );
+            return;
+          }
+
+          // Send claim transaction
+          const result = await contract.methods.claim(marketId).send({
+            from: userAccount,
+            gas: 200000,
+          });
+
+          const txHash = result.transactionHash;
+          const gasUsed = result.gasUsed;
+          const etherscanUrl = `https://sepolia.etherscan.io/tx/${txHash}`;
+
+          console.log("✓ Claim Successful!");
+          console.log("Transaction Hash:", txHash);
+          console.log("Gas Used:", gasUsed);
+          console.log("Market ID:", marketId);
+
+          // Display success
+          document.getElementById("resultLabel").textContent =
+            "✅ Winnings Claimed!";
+          document.getElementById("resultValue").textContent = txHash;
+          document.getElementById("detailedResults").innerHTML = `
+            <div style="background: linear-gradient(135deg, #10b981 0%, #34d399 100%); padding: 15px; border-radius: 6px; color: white; font-size: 12px;">
+              <div style="margin-bottom: 10px; font-size: 14px; font-weight: bold;">🎉 Congratulations!</div>
+              <div style="margin-bottom: 8px;"><strong>Market ID:</strong> ${marketId}</div>
+              <div style="margin-bottom: 8px;"><strong>Your Prediction:</strong> ${userPrediction === 0 ? "YES ✓" : "NO ✗"}</div>
+              <div style="margin-bottom: 8px;"><strong>Market Outcome:</strong> ${actualOutcome === 0 ? "YES ✓" : "NO ✗"}</div>
+              <div style="margin-bottom: 8px;"><strong>Your Stake:</strong> ${(prediction[0] / 1e18).toFixed(4)} ETH</div>
+              <div style="margin-bottom: 8px;"><strong>Gas Used:</strong> ${gasUsed.toLocaleString()}</div>
+              <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.3);">
+                <strong>Transaction:</strong> ${txHash.slice(0, 20)}...
+              </div>
+            </div>
+          `;
+          document.getElementById("detailedResults").style.display = "block";
+
+          document.getElementById("etherscanLink").href = etherscanUrl;
+          document.getElementById("etherscanLink").style.display =
+            "inline-block";
+
+          console.log("View on Etherscan:", etherscanUrl);
+          console.log("=====================\n");
+        } catch (error) {
+          console.error("❌ Error claiming winnings:", error);
+          showResult("Error: " + (error.message || error), true);
+          document.getElementById("etherscanLink").style.display = "none";
+        }
+      }
+
+      // Load market info when input changes
+      document.addEventListener("DOMContentLoaded", () => {
+        const marketIdInput = document.getElementById("marketIdInput");
+        if (marketIdInput) {
+          marketIdInput.addEventListener("change", loadMarketInfo);
+        }
+      });
 
       // Initialize on load
       window.addEventListener("load", () => {
