@@ -283,53 +283,457 @@ export class MockMatchService implements IMatchService {
 
 ## Phase 3: CRE Integration (Mock or Real)
 
-**Goal:** Automated match data and events
+**Goal:** Automated match data and events via custom bookies API + MockCREService
 
 **Build Prompt:** [BACKEND_BUILD_PROMPT.md](./BACKEND_BUILD_PROMPT.md) (CRE sections)
 
 ### What to Build
 
 ```
-✅ Chainlink CRE subscription (if available)
+✅ Custom internal "Bookies API Service" (our own data layer)
+✅ MockCREService that calls our Bookies API
 ✅ Webhook endpoint (Supabase Edge Function)
-✅ OR: Mock CRE service with historical data
-✅ Historical demo playback system (10x speed)
+✅ Historical demo playback system (10x speed replay)
 ✅ Realtime event broadcasting to frontend
-✅ Provisional balance calculation on goal
+✅ Provisional balance + dynamic odds calculation on goal
 ```
 
-### Decision Point: Mock vs Real CRE
+### Recommended MVP Approach: Custom Bookies API Service
 
-**Option A: Real CRE Available**
+Instead of waiting for external CRE or real-time API access, **build a lightweight internal API that serves one complete match** with all known stats. This becomes your MVP's data engine.
+
+**Architecture:**
 
 ```
-✅ Subscribe to live match via CRE API
-✅ Receive goal events via webhook
+┌────────────────────────────────────────────────────┐
+│    Our Custom Bookies API Service                  │
+│    (Simple Node.js/Express server)                 │
+├────────────────────────────────────────────────────┤
+│                                                    │
+│  POST /api/matches/setup                           │
+│  ├─ Upload match data:                             │
+│  │  - PreMatch odds (from The Odds API)            │
+│  │  - Lineups (player names, positions)            │
+│  │  - Match events (goals, cards, subs - KNOWN)    │
+│  │  - Final result (KNOWN)                         │
+│  │                                                 │
+│  GET /api/matches/:matchId/state                   │
+│  ├─ Returns current game state at requested time   │
+│  │                                                 │
+│  GET /api/matches/:matchId/odds?minute=23          │
+│  ├─ Returns odds adjusted for events at min 23:    │
+│  │  - Base odds: from pre-match (The Odds API)     │
+│  │  - Dynamic adjustment: if Benzema scores @ 23', │
+│  │    then his odds DROP (he's less likely now)    │
+│  │  - Substitutes: if player subbed off, odds LOCK │
+│  │                                                 │
+│  POST /api/matches/:matchId/reset                  │
+│  ├─ Reset match state to kickoff                   │
+│  ├─ Allows infinite replays for demo/testing       │
+│  │                                                 │
+└────────────────────────────────────────────────────┘
+         ↑                                ↓
+         │                                │
+   MockCREService                   Frontend + Smart Contracts
+   (calls this API)                  (call this API for odds/state)
+```
+
+### Data Source Strategy
+
+**For MVP Demo, choose ONE of these approaches:**
+
+#### Option A: Recent Completed Match (RECOMMENDED)
+
+Use a match that was **played recently** (last 2-7 days) where all stats are known:
+
+```yaml
+Example: Manchester City vs Newcastle (if already played)
+└─ ✅ All stats publicly available (go to ESPN, FBRef)
+└─ ✅ Pre-match odds retrievable from The Odds API
+└─ ✅ Can replay unlimited times
+└─ ✅ No dependency on live broadcast timing
+└─ ✅ Demo works anytime, anywhere
+```
+
+**Workflow:**
+
+1. Find match (ESPN/FBRef)
+2. Get lineups, final score, all goals + times
+3. Fetch pre-match odds from The Odds API (they archive this)
+4. Build your Bookies API with this data
+5. Replay anytime during hackathon
+
+#### Option B: Today's Game (If It Fits Timeline)
+
+Use a match happening **today/tomorrow**:
+
+```yaml
+Example: Manchester City vs Newcastle (if playing today)
+└─ ✅ Real odds from The Odds API
+└─ ✅ Real lineups when published (T-15 min pre-game)
+└─ └─ Get from The Odds API or ESPN
+└─ ✅ Watch live, record all events
+└─ ✅ After match: compile full stats
+└─ After: Can replay demo using compiled data
+```
+
+**Workflow:**
+
+1. Watch game live
+2. Record: minute of each goal, player name, substitutions, cards
+3. After final whistle: compile official stats
+4. Build Bookies API with recorded data
+5. Demo MVP with this data
+
+**Risk:** Depends on timing. If game is late, you might finish after hackathon ends.
+
+#### Option C: Hybrid (Best for Hackathon)
+
+- Use a **recent past match** (completed, all stats known)
+- Get pre-match odds from The Odds API (they archive odds for past matches)
+- Build stable Bookies API immediately
+- If external CRE becomes available later → integrate real data
+
+**Recommended for goal.live MVP: OPTION A (recent past match)**
+
+### Implementation: Your Bookies API Service
+
+```typescript
+// backend/src/services/bookiesApi.ts
+
+export interface MatchSetupData {
+  matchId: string;
+  homeTeam: string;
+  awayTeam: string;
+  kickoffTime: Date;
+
+  // Pre-match odds from The Odds API (or archive)
+  preMatchOdds: {
+    [playerId: string]: {
+      name: string;
+      odds: number; // Decimal odds (e.g., 4.5)
+      position: string;
+    };
+  };
+
+  // All events that will happen (in chronological order)
+  events: Array<{
+    minute: number;
+    type: "GOAL" | "RED_CARD" | "YELLOW_CARD" | "SUBSTITUTION";
+    playerId: string;
+    playerName: string;
+    team: "home" | "away";
+  }>;
+
+  // Final result
+  finalResult: {
+    scoreHome: number;
+    scoreAway: number;
+  };
+}
+
+export class BookiesApiService {
+  private matchData: MatchSetupData;
+  private currentMinute: number = 0;
+  private playersOnPitch: Set<string> = new Set();
+
+  async setupMatch(data: MatchSetupData) {
+    this.matchData = data;
+    // Initialize players on pitch
+    Object.keys(data.preMatchOdds).forEach((pId) => {
+      this.playersOnPitch.add(pId);
+    });
+  }
+
+  async getMatchState(atMinute: number) {
+    // Return match state AT THAT MINUTE
+    // E.g., if Benzema scored at minute 23, and we query minute 30,
+    // return state with goal already counted
+
+    const events = this.matchData.events.filter((e) => e.minute <= atMinute);
+    const scorersAtMinute = events
+      .filter((e) => e.type === "GOAL")
+      .map((e) => e.playerName);
+
+    return {
+      matchId: this.matchData.matchId,
+      currentMinute: atMinute,
+      score: {
+        home: scorersAtMinute.filter(
+          (s) => this.matchData.preMatchOdds[s]?.position === "home",
+        ).length,
+        away: scorersAtMinute.length,
+      },
+      goalScorers: scorersAtMinute,
+    };
+  }
+
+  async getOddsAtMinute(atMinute: number): Promise<Record<string, number>> {
+    // Return odds ADJUSTED for events that have occurred
+    const odds: Record<string, number> = {};
+
+    for (const [playerId, playerData] of Object.entries(
+      this.matchData.preMatchOdds,
+    )) {
+      let baseOdds = playerData.odds;
+
+      // Check if player has already scored
+      const hasScored = this.matchData.events
+        .filter((e) => e.minute <= atMinute && e.type === "GOAL")
+        .some((e) => e.playerId === playerId);
+
+      if (hasScored) {
+        // Player already scored - odds DROP significantly
+        baseOdds = baseOdds * 0.15; // 85% reduction (can't score again same match)
+      }
+
+      // Check if player was subbed off
+      const wasSubbed = this.matchData.events
+        .filter((e) => e.minute <= atMinute && e.type === "SUBSTITUTION")
+        .some((e) => e.playerId === playerId);
+
+      if (wasSubbed) {
+        // Player off the field - odds are 0 (can't score)
+        baseOdds = 0;
+      }
+
+      // Check if player is on pitch
+      if (this.playersOnPitch.has(playerId)) {
+        odds[playerId] = baseOdds;
+      }
+    }
+
+    return odds;
+  }
+
+  async progressTime(toMinute: number) {
+    // Simulate time progression
+    this.currentMinute = toMinute;
+  }
+
+  async reset() {
+    // Reset to kickoff - allows infinite replays
+    this.currentMinute = 0;
+    this.playersOnPitch.clear();
+    Object.keys(this.matchData.preMatchOdds).forEach((pId) => {
+      this.playersOnPitch.add(pId);
+    });
+  }
+}
+```
+
+**Express Server:**
+
+```typescript
+// backend/src/routes/bookies-api.ts
+
+import express from "express";
+import { BookiesApiService } from "../services/bookiesApi";
+
+const router = express.Router();
+const bookiesApi = new BookiesApiService();
+
+// Setup match with known data
+router.post("/api/matches/setup", async (req, res) => {
+  await bookiesApi.setupMatch(req.body);
+  res.json({ success: true, message: "Match data loaded" });
+});
+
+// Get current match state
+router.get("/api/matches/:matchId/state", async (req, res) => {
+  const { minute } = req.query;
+  const state = await bookiesApi.getMatchState(parseInt(minute as string));
+  res.json(state);
+});
+
+// Get odds at specific minute
+router.get("/api/matches/:matchId/odds", async (req, res) => {
+  const { minute } = req.query;
+  const odds = await bookiesApi.getOddsAtMinute(parseInt(minute as string));
+  res.json({
+    minute: parseInt(minute as string),
+    odds,
+    disclaimer: "Odds adjusted for events that have occurred",
+  });
+});
+
+// Reset match (for replays)
+router.post("/api/matches/:matchId/reset", async (req, res) => {
+  await bookiesApi.reset();
+  res.json({ success: true, message: "Match reset to kickoff" });
+});
+
+export default router;
+```
+
+### Getting Pre-Match Odds from The Odds API
+
+The Odds API (https://the-odds-api.com) supports goalscorer markets:
+
+```bash
+# Get goalscorer odds for upcoming match
+curl "https://api.the-odds-api.com/v4/sports/soccer_england_premier_league/odds?regions=eu&markets=player_goal_scorer&apiKey=YOUR_API_KEY"
+
+# Response includes:
+# {
+#   "outcomes": [
+#     {
+#       "name": "Benzema to score",
+#       "price": 4.5  // Decimal odds
+#     },
+#     ...
+#   ]
+# }
+```
+
+**For past matches:** The Odds API archives odds. Contact their support or check if you can query historical data via their Historical endpoint (premium feature).
+
+### Decision: Manchester City vs Newcastle
+
+**Is it available on The Odds API?**
+
+- If match is **upcoming**: YES, you can fetch live odds
+- If match **already played**: Possibly via archived historical data (check documentation)
+
+**Better Strategy:** Pick ANY recent past EPL match (e.g., match from last weekend) where:
+
+1. Stats are publicly available (ESPN, FBRef)
+2. You can manually fetch pre-match odds from The Odds API archive or our own database
+
+### MockCREService Implementation
+
+Once your Bookies API is running, MockCREService becomes simple:
+
+```typescript
+// services/cre/MockCREService.ts
+
+export class MockCREService implements ICREService {
+  constructor(
+    private bookiesApiUrl: string,
+    private speedMultiplier: number = 10,
+  ) {}
+
+  subscribeToGoalEvents(
+    matchId: string,
+    callback: (goal: GoalEvent) => void,
+  ): () => void {
+    // Get match data from OUR Bookies API
+    const events = this.fetchMatchEvents(matchId);
+
+    // Simulate time progression and call callback when goals occur
+    let currentIndex = 0;
+
+    const interval = setInterval(async () => {
+      if (currentIndex >= events.length) {
+        clearInterval(interval);
+        return;
+      }
+
+      const event = events[currentIndex];
+
+      // Calculate delay based on speed multiplier
+      const delayMs = (event.minute * 60 * 1000) / this.speedMultiplier;
+
+      // Call callback with goal event
+      callback({
+        matchId,
+        playerId: event.playerId,
+        playerName: event.playerName,
+        minute: event.minute,
+        timestamp: Date.now(),
+        source: "mock_cre_bookies_api",
+        verified: true,
+      });
+
+      currentIndex++;
+    }, 500);
+
+    return () => clearInterval(interval);
+  }
+
+  async getOddsAtMinute(matchId: string, minute: number) {
+    // Call OUR Bookies API to get adjusted odds
+    const response = await fetch(
+      `${this.bookiesApiUrl}/api/matches/${matchId}/odds?minute=${minute}`,
+    );
+    return response.json();
+  }
+
+  private fetchMatchEvents(matchId: string) {
+    // Call OUR Bookies API to get all match events
+    return fetch(`${this.bookiesApiUrl}/api/matches/${matchId}/events`).then(
+      (r) => r.json(),
+    );
+  }
+}
+```
+
+### MVP Flow with Bookies API
+
+```
+1. Setup Phase:
+   ├─ Get match data from ESPN (lineups, final score, goals)
+   ├─ Get pre-match odds from The Odds API
+   ├─ POST to /api/matches/setup with all data
+   └─ Bookies API is now ready
+
+2. Demo Phase (Repeatable):
+   ├─ Frontend asks: "Which match?"
+   ├─ Bookies API returns: Match state at minute 0
+   ├─ User places bet on Benzema (4.5x odds)
+   ├─ MockCREService progresses time (10x speed)
+   ├─ At minute 23: Goal! Callback fires
+   ├─ Frontend queries: GET /odds?minute=23
+   ├─ Bookies API returns: Benzema odds now 0.5x (already scored)
+   ├─ User sees provisional balance update
+   ├─ Continue to final whistle
+   └─ Final settlement triggered
+
+3. Replay Phase:
+   ├─ POST /reset
+   ├─ Bookies API state returns to minute 0
+   ├─ Repeat demo as many times as needed
+   └─ Perfect for hackathon demos (no timing dependencies)
+```
+
+### Deliverable
+
+- ✅ Lightweight Bookies API service (can be Express or even Next.js API routes)
+- ✅ One complete match with all stats pre-loaded
+- ✅ MockCREService calling Bookies API
+- ✅ Frontend receiving events via realtime (Supabase or WebSocket)
+- ✅ Dynamic odds adjustments based on game events
+- ✅ Repeatable, reliable MVP demo
+
+**Decision Point:** If Chainlink CRE becomes available later, replace Bookies API calls with real CRE calls. Service interface remains the same.
+
+---
+
+## Phase 3 Option B (If Real CRE Available)
+
+If during Phase 3 you gain access to **real Chainlink CRE**:
+
+```
+✅ Subscribe to live match via CRE webhooks
+✅ Receive goal events directly from Chainlink
 ✅ Populate players from CRE lineup data
 ✅ Get official result from CRE
-```
-
-**Option B: CRE Data Limited → Use Mock**
-
-```
-🎭 Create MockCREService class
-🎭 Load historical match JSON file
-🎭 Replay events at 10x speed
-🎭 Simulate webhook calls to Supabase
-🎭 Frontend receives events via Supabase Realtime
+✅ **Service abstraction means zero code changes** - just swap the service
 ```
 
 **Implementation:**
 
 ```typescript
-// Service abstraction allows switching
+// Simply swap the service factory
 const creService =
-  process.env.USE_MOCK_CRE === "true"
-    ? new MockCREService()
-    : new ChainlinkCREService(creApiKey);
+  process.env.USE_REAL_CRE === "true"
+    ? new RealCREService(creApiKey)
+    : {
+        bookiesApiUrl: process.env.BOOKIES_API_URL,
+        speedMultiplier: 10,
+        // ... new MockCREService(bookiesApiUrl, speedMultiplier)
+      };
 ```
-
-**Deliverable:** Automated match playback (real or historical)
 
 ---
 
