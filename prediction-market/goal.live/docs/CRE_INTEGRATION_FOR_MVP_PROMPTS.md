@@ -714,7 +714,7 @@ Success Criteria:
 
 Ready to build? Pick your match!
 
-```
+````
 
 ---
 
@@ -783,5 +783,93 @@ When judges ask "Where did the odds come from?" you say:
 > "We captured these odds LIVE from The Odds API during an actual EPL match on [DATE]. The starting odds were from Betfair, FanDuel, DraftKings. As the match progressed, the market automatically adjusted these odds (you can see Haaland's odds dropped 85% after he scored). We store all this real market data, then build a time-based replay simulator. Now you can see exactly how a bettor's odds would have changed depending on when they placed their bet."
 
 **That's not a hackathon project. That's a real system.**
+
+---
+
+## 📚 RESOURCES & REFERENCES
+
+### APIs & Data Sources
+
+**The Odds API (Free - for MVP testing):**
+- [The Odds API Documentation](https://the-odds-api.com/docs/) - Complete API reference
+- [The Odds API Sports List](https://the-odds-api.com/sports-odds-data/sports-apis.html) - Available sports
+- Markets available: `player_goal_scorer`, `player_assists`, `h2h` (match winner)
+- Free tier: 500 requests per month, 1 request per minute
+- [Get API Key](https://the-odds-api.com/) - Sign up for free access
+
+**For Production (After MVP):**
+- [Sportmonks API Documentation](https://docs.sportmonks.com/football/v/api/getting-started) - Professional sports data
+- [Sportradar API](https://developer.sportradar.com/docs/read/Home) - Enterprise real-time data
+- [Betfair API](https://www.betfair.com/exchange/plus/en/api?tab=guides) - Real betting exchange odds
+
+### Google Sheets Integration
+
+**Google Sheets API Documentation:**
+- [Google Sheets API Overview](https://developers.google.com/sheets/api) - Getting started
+- [Google Sheets API Reference](https://developers.google.com/sheets/api/reference/rest)
+- [Authentication Setup](https://developers.google.com/sheets/api/quickstart/nodejs) - OAuth for Node.js
+- [Writing Data to Sheets](https://developers.google.com/sheets/api/guides/values) - Appending rows
+
+**Sheets Libraries for TypeScript/JavaScript:**
+- [google-spreadsheet npm](https://www.npmjs.com/package/google-spreadsheet) - Simple Sheets wrapper
+- [googleapis npm](https://www.npmjs.com/package/googleapis) - Official Google API client
+
+### Sports Data Structure References
+
+**Match & Player Data Formats:**
+- [UEFA/FIFA Standard Match Data](https://www.fifa.com/fifaplus/en/tournaments) - Official formats
+- [Opta Data Schema](https://www.statsperform.com/sports-data/) - Professional standard
+- [The-Odds-API Response Format](https://the-odds-api.com/docs/) - JSON structure examples
+
+### Chainlink CRE Resources (For Phase 3+)
+
+**Core CRE Documentation:**
+- [Chainlink CRE Capability Overview](https://docs.chain.link/cre) - Start here
+- [CRE Workflow Configuration](https://docs.chain.link/cre/workflows) - YAML-based setup
+- [CRE HTTP Capability](https://docs.chain.link/cre/capabilities/http) - Making API calls
+
+**CRE Examples:**
+- [CRE Examples Repository](https://github.com/smartcontractkit/cre-examples) - Production patterns
+- [CRE Sports Data Example](https://github.com/smartcontractkit/cre-examples/tree/main/sports-data)
+
+### Related goal.live Documentation
+
+**Project Files:**
+- [CRE_CHAINLINK_INTEGRATION_GUIDE.md](./CRE_CHAINLINK_INTEGRATION_GUIDE.md) - Deep technical CRE reference
+- [LIVE_ODDS_CAPTURE_AND_MOCK_CRE_API.md](./LIVE_ODDS_CAPTURE_AND_MOCK_CRE_API.md) - Manchester City game strategy
+- [DEVELOPMENT_ROADMAP.md](./DEVELOPMENT_ROADMAP.md) - Full product roadmap
+- [BACKEND_BUILD_PROMPT.md](./BACKEND_BUILD_PROMPT.md) - Phase 2-4 backend guide
+
+### Quick Copy-Paste Reference
+
+**The Odds API cURL Command:**
+```bash
+# Get current odds for EPL matches
+curl "https://api.the-odds-api.com/v4/sports/soccer_epl/odds?apiKey=YOUR_API_KEY&regions=uk,us&markets=player_goal_scorer"
+````
+
+**Google Sheets Service Account Setup:**
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create new project
+3. Enable Google Sheets API
+4. Create Service Account → Generate JSON key
+5. Share Sheets document with service account email
+6. Use JSON key in your TypeScript code
+
+**Environment Variables for MVP:**
+
+```
+THE_ODDS_API_KEY=284c2661be564a872e91d8a4bb885ac9
+GOOGLE_SHEETS_ID=your_sheet_id_here
+GOOGLE_SERVICE_ACCOUNT_JSON=credentials.json
+MATCH_EVENT_ID=cf641a7ccfddaeccd926ca123d72a4b5
+```
+
+---
+
+_Last Updated: February 21, 2026_
+
+```
 
 ```

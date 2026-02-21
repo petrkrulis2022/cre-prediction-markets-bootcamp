@@ -2175,17 +2175,170 @@ export async function monitorCREHealth() {
 
 ---
 
-## Recommended Reading Order
+## 📚 RESOURCES & REFERENCES
 
-1. **This document** (you are here)
+### Official Chainlink Documentation
+
+**Core CRE Documentation:**
+
+- [Chainlink CRE Capability Overview](https://docs.chain.link/cre) - Start here for CRE basics
+- [CRE Architecture & Design](https://docs.chain.link/cre/architecture) - How CRE works under the hood
+- [CRE Workflow Configuration](https://docs.chain.link/cre/workflows) - YAML-based workflow setup
+- [CRE HTTP Capability](https://docs.chain.link/cre/capabilities/http) - Making HTTP calls from CRE
+- [CRE Crypto Capability](https://docs.chain.link/cre/capabilities/crypto) - Cryptographic operations
+- [CRE Threshold Encryption](https://docs.chain.link/cre/capabilities/threshold-encryption) - Secrets management
+
+**Chainlink Data Feeds:**
+
+- [Chainlink Data Streams](https://docs.chain.link/data-streams) - Real-time low-latency data feeds
+- [Chainlink VRF (Verifiable Randomness)](https://docs.chain.link/vrf) - For fair settlement if needed
+- [Chainlink Functions](https://docs.chain.link/functions) - Serverless compute for Web2/Web3 integration
+
+### CRE Examples & GitHub Repositories
+
+**Official Chainlink Examples:**
+
+- [Chainlink CRE Examples Repository](https://github.com/smartcontractkit/cre-examples) - Production examples
+- [CRE Sports Data Example](https://github.com/smartcontractkit/cre-examples/tree/main/sports-data) - Official sports data integration
+- [CRE Webhook Receiver Pattern](https://github.com/smartcontractkit/cre-examples/tree/main/webhook-patterns) - Webhook handling examples
+
+**Community Implementations:**
+
+- [Chainlink Labs Bootcamp Materials](https://github.com/ChainlinkLabs/bootcamp-materials) - Educational resources
+- [CRE Starter Kit](https://github.com/smartcontractkit/cre-starter-kit) - Minimal CRE setup template
+
+### Sports Data Provider Documentation
+
+**Pre-Match & Live Data Providers:**
+
+- [Sportmonks API Documentation](https://docs.sportmonks.com/football/v/api/getting-started) - Football (soccer) stats API
+  - [Sportmonks + Chainlink CRE Integration Blog](https://www.sportmonks.com/blogs/sportmonks-and-chainlink-bring-sport-data-to-the-blockchain/)
+  - Endpoints: Pre-match odds, Goals, Lineups, Match events
+- [Opta/Stats Perform API](https://www.statsperform.com/sports-data-apis/) - Premium sports data provider
+  - [Dynamic Stats API Documentation](https://www.statsperform.com/betting-fantasy/betting-content/dynamic-stats-api/)
+  - Endpoints: Live match data, xG, possession, heat maps
+- [Sportradar API](https://developer.sportradar.com/docs/read/Home) - Real-time sports data
+  - Football endpoints: livescores, live events, match status
+  - Documentation requires registration at developer.sportradar.com
+
+**Odds & Betting Data:**
+
+- [The Odds API (Free)](https://the-odds-api.com/docs/) - Free historical odds for testing
+  - Endpoint: `https://api.the-odds-api.com/v4/sports/{sport}/odds`
+  - Markets: player_goal_scorer, player_assists, h2h
+  - Rate limits: 1 request per minute (free tier)
+
+- [Betfair API](https://www.betfair.com/exchange/plus/en/api?tab=guides) - Enterprise odds data
+  - Real-time betting odds from betting exchanges
+  - Requires licensing agreement
+
+### Blockchain & Smart Contract Resources
+
+**Ethereum & Testnet Documentation:**
+
+- [Sepolia Testnet Info](https://sepolia.dev/) - Official Sepolia testnet documentation
+- [Ethereum JSON-RPC API](https://ethereum.org/en/developers/docs/apis/json-rpc/) - Node interaction reference
+- [ethers.js v6 Documentation](https://docs.ethers.org/v6/) - Ethereum library for JavaScript
+
+**Smart Contract Development:**
+
+- [OpenZeppelin Contracts](https://docs.openzeppelin.com/contracts/) - Security libraries
+- [Solidity Documentation](https://docs.soliditylang.org/) - Solidity language reference
+- [Hardhat Documentation](https://hardhat.org/docs) - Smart contract development framework
+
+**Decentralized Oracle Resources:**
+
+- [Chainlink Docs - Decentralized Oracle Network](https://docs.chain.link/architecture-overview/architecture-decentralized-model)
+- [Chainlink Security & Audits](https://docs.chain.link/overview/security)
+- [Chainlink Service Level Agreements (SLA)](https://chain.link/sla)
+
+### Database & Backend References
+
+**Supabase Documentation:**
+
+- [Supabase Getting Started](https://supabase.com/docs/guides/getting-started)
+- [Supabase Realtime](https://supabase.com/docs/guides/realtime) - WebSocket subscriptions
+- [Supabase Row Level Security (RLS)](https://supabase.com/docs/guides/auth/row-level-security)
+- [Supabase Edge Functions](https://supabase.com/docs/guides/functions)
+
+**PostgreSQL References:**
+
+- [PostgreSQL Documentation](https://www.postgresql.org/docs/current/) - Open source relational database
+- [PostgreSQL JSON Support](https://www.postgresql.org/docs/current/datatype-json.html) - For odds snapshots
+
+### Related goal.live Documentation
+
+**Internal Project Files:**
+
+- [DEVELOPMENT_ROADMAP.md](./DEVELOPMENT_ROADMAP.md) - 4-phase product development strategy
+- [BACKEND_BUILD_PROMPT.md](./BACKEND_BUILD_PROMPT.md) - Phase 2-4 backend implementation
+- [MVP_FINAL_SPEC.md](./MVP_FINAL_SPEC.md) - MVP requirements and constraints
+- [ARCHITECTURE.md](./ARCHITECTURE.md) - Complete system overview
+- [CRE_INTEGRATION_FOR_MVP_PROMPTS.md](./CRE_INTEGRATION_FOR_MVP_PROMPTS.md) - Specific implementation prompts
+
+### Recommended Reading Order
+
+**Phase 1 (Now - Frontend Building):**
+
+1. Skip CRE docs for now (Phase 3 only)
+2. Focus on [FRONTEND_BUILD_PROMPT.md](./FRONTEND_BUILD_PROMPT.md)
+
+**Phase 3 (CRE Integration Planning):**
+
+1. This document (CRE_CHAINLINK_INTEGRATION_GUIDE.md)
 2. [Chainlink CRE Official Docs](https://docs.chain.link/cre)
-3. [Chainlink Data Streams](https://docs.chain.link/data-streams)
-4. [Sportmonks API + Chainlink Node](https://www.sportmonks.com/blogs/sportmonks-and-chainlink-bring-sport-data-to-the-blockchain/)
-5. [Opta/Stats Perform Integration](https://www.statsperform.com/betting-fantasy/betting-content/dynamic-stats-api/)
-6. Your project's [DEVELOPMENT_ROADMAP.md](./DEVELOPMENT_ROADMAP.md)
+3. [CRE Workflow Configuration](https://docs.chain.link/cre/workflows)
+4. [Chainlink CRE Examples Repository](https://github.com/smartcontractkit/cre-examples)
+5. [Sportmonks API + Chainlink CRE Integration](https://www.sportmonks.com/blogs/sportmonks-and-chainlink-bring-sport-data-to-the-blockchain/)
+
+**Phase 4+ (Production CRE Deployment):**
+
+1. [CRE Architecture & Design](https://docs.chain.link/cre/architecture)
+2. [CRE Threshold Encryption](https://docs.chain.link/cre/capabilities/threshold-encryption)
+3. [Chainlink Security & Audits](https://docs.chain.link/overview/security)
+4. [Monitoring & Fallback Strategies](#monitoring--fallback-strategies) (section in this doc)
+
+### API Rate Limits & Quotas Reference
+
+| Provider          | Endpoint      | Free Tier     | Enterprise | Notes                            |
+| ----------------- | ------------- | ------------- | ---------- | -------------------------------- |
+| **The Odds API**  | `/odds`       | 500 req/month | Unlimited  | Use for testing                  |
+| **Sportmonks**    | `/matches`    | 1,000/day     | On-demand  | Professional plan needed         |
+| **Sportradar**    | `/livescores` | Contact       | On-demand  | Enterprise licensing             |
+| **Betfair**       | Streaming API | None          | $5k+/year  | Real market odds                 |
+| **Chainlink CRE** | DON requests  | Included      | Included   | Depends on node operator pricing |
+
+### Quick Links by Use Case
+
+**Building Mock CRE Service (Phase 1-2):**
+
+- → [CRE_INTEGRATION_FOR_MVP_PROMPTS.md](./CRE_INTEGRATION_FOR_MVP_PROMPTS.md)
+- → [LIVE_ODDS_CAPTURE_AND_MOCK_CRE_API.md](./LIVE_ODDS_CAPTURE_AND_MOCK_CRE_API.md)
+
+**Integrating Real CRE (Phase 3+):**
+
+- → [Chainlink CRE Workflows](https://docs.chain.link/cre/workflows)
+- → [CRE Examples Repository](https://github.com/smartcontractkit/cre-examples/tree/main/sports-data)
+
+**Fetching Sports Data:**
+
+- → [The Odds API Docs](https://the-odds-api.com/docs/)
+- → [Sportmonks API Docs](https://docs.sportmonks.com/football/v/api/getting-started)
+
+**Setting Up Smart Contracts:**
+
+- → [CONTRACTS_BUILD_PROMPT.md](../docs/CONTRACTS_BUILD_PROMPT.md)
+- → [Hardhat Getting Started](https://hardhat.org/hardhat-runner/docs/getting-started)
+
+**Database & Realtime Sync:**
+
+- → [Supabase Docs](https://supabase.com/docs)
+- → [BACKEND_BUILD_PROMPT.md](../docs/BACKEND_BUILD_PROMPT.md)
 
 ---
 
 **End of CRE Integration Guide**
+
+_Last Updated: February 21, 2026_
 
 _Last Updated: February 20, 2026_

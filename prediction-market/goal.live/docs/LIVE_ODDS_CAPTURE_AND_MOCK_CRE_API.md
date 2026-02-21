@@ -1406,3 +1406,133 @@ User clicks "Progress to minute 45"
 1. Which EPL match this week would you like to capture?
 2. Do you want to use Google Sheets or Excel?
 3. Should we capture multiple matches or focus on one for MVP?
+
+---
+
+## 📚 RESOURCES & REFERENCES
+
+### The Odds API - Core Resources
+
+**API Documentation:**
+- [The Odds API Main Docs](https://the-odds-api.com/docs/) - Complete reference
+- [The-Odds-API Postman Collection](https://www.postman.com/api-evangelist/workspace/the-odds-api) - API testing
+- [Sports List Endpoint](https://the-odds-api.com/sports-odds-data/sports-apis.html) - Available sports and markets
+- API Endpoint: `https://api.the-odds-api.com/v4/sports/{sport_key}/odds`
+
+**Available Markets for Soccer:**
+- `player_goal_scorer` - Next goal scorer odds
+- `player_assists` - Player assist odds  
+- `h2h` - Home/Away/Draw match odds
+- `over_under` - Total goals over/under
+
+**Rate Limits & Quotas:**
+- Free tier: 500 requests per month, 1 per minute
+- Premium: On-demand pricing
+- [Sign up for free API key](https://the-odds-api.com/)
+
+### Manchester City vs Newcastle Specific
+
+**Match Data:**
+- Date: February 21, 2026, 20:00 UTC
+- Fixture: EPL (English Premier League)
+- Match ID: `cf641a7ccfddaeccd926ca123d72a4b5`
+- Bookmakers available: Betfair, DraftKings, FanDuel, Sky Bet, Unibet (14-16 total)
+
+**Live Statistics Sources:**
+- [ESPN FC Live Match](https://www.espn.com/soccer/) - Live scores and updates
+- [FBRef (Football Reference)](https://fbref.com/) - Advanced stats (xG, possession, etc.)
+- [Understat.com](https://understat.com/) - Advanced analytics and xG data
+- [StatsBomb Open Data](https://github.com/StatsBomb/StatsBomb-JSON) - Free events data
+
+### Google Sheets Integration
+
+**API Setup:**
+- [Google Cloud Console](https://console.cloud.google.com/) - Create service account
+- [Google Sheets API Overview](https://developers.google.com/sheets/api) - Getting started
+- [Google Sheets API Reference](https://developers.google.com/sheets/api/reference/rest) - Full API docs
+
+**TypeScript/Node.js Libraries:**
+- [google-spreadsheet npm](https://www.npmjs.com/package/google-spreadsheet) - Recommended (simpler)
+- [googleapis npm](https://www.npmjs.com/package/googleapis) - Official Google client
+- Example setup: [Google Sheets + Node.js Tutorial](https://www.npmjs.com/package/google-spreadsheet#setup-service-account)
+
+### Real-Time Polling Implementation
+
+**TypeScript Node.js Polling Service:**
+- [node-cron for scheduling](https://www.npmjs.com/package/node-cron) - Task scheduling
+- [axios for HTTP requests](https://www.npmjs.com/package/axios) - API calls
+- [dotenv for env variables](https://www.npmjs.com/package/dotenv) - Config management
+
+**Deployment Options:**
+- Local machine (for hackathon)
+- [AWS Lambda + CloudWatch Events](https://docs.aws.amazon.com/lambda/) - Serverless execution
+- [Google Cloud Functions](https://cloud.google.com/functions/docs) - Similar to Lambda
+- [Heroku](https://www.heroku.com/) - Simple deployment (free tier)
+
+### Mock CRE API Service
+
+**Express.js Framework:**
+- [Express.js Docs](https://expressjs.com/) - Web framework
+- [Express API Reference](https://expressjs.com/en/api.html) - Complete API docs
+- Example: `npm install express cors body-parser`
+
+**Running Locally:**
+```bash
+# Start mock CRE server
+npm install express typescript
+ts-node src/mock-cre-api.ts
+
+# Default: http://localhost:3000/api/matches/{matchId}/odds?minute=23
+```
+
+### Post-Match Data Processing
+
+**Data Consolidation:**
+- Parse Google Sheets with `google-spreadsheet` library
+- Convert CSV export to JSON using `csv-parser` npm package
+- Store in `/data/match-profiles/{matchName}.json`
+
+**ML/Analytics (Phase 3+):**
+- [Python scikit-learn](https://scikit-learn.org/) - For odds prediction model
+- [TensorFlow.js](https://www.tensorflow.org/js) - JavaScript ML library
+- [Pandas](https://pandas.pydata.org/) - Data analysis in Python
+
+### Chainlink CRE Integration (Phase 3+)
+
+**When Migrating to Real CRE:**
+- [Chainlink CRE Documentation](https://docs.chain.link/cre) - Full reference
+- [CRE HTTP Capability](https://docs.chain.link/cre/capabilities/http) - Making HTTP calls
+- [CRE Examples Repository](https://github.com/smartcontractkit/cre-examples) - Code patterns
+- Service abstraction pattern: swap implementation via environment variable
+
+### Related goal.live Documentation
+
+**Project Files:**
+- [DEVELOPMENT_ROADMAP.md](./DEVELOPMENT_ROADMAP.md) - 4-phase product strategy
+- [CRE_CHAINLINK_INTEGRATION_GUIDE.md](./CRE_CHAINLINK_INTEGRATION_GUIDE.md) - CRE technical deep-dive
+- [CRE_INTEGRATION_FOR_MVP_PROMPTS.md](./CRE_INTEGRATION_FOR_MVP_PROMPTS.md) - Implementation prompts
+- [BACKEND_BUILD_PROMPT.md](./BACKEND_BUILD_PROMPT.md) - Backend architecture
+- [MVP_BUILD_PLAN.md](../MVP_BUILD_PLAN.md) - ML modeling approach
+
+### Quick Setup Commands
+
+**Get The Odds API Key:**
+1. Visit [the-odds-api.com](https://the-odds-api.com/)
+2. Sign up → Copy API key
+
+**Store in .env:**
+```
+THE_ODDS_API_KEY=284c2661be564a872e91d8a4bb885ac9
+MATCH_ID=cf641a7ccfddaeccd926ca123d72a4b5
+GOOGLE_SHEETS_ID=your_sheet_id
+GOOGLE_SERVICE_ACCOUNT_JSON=credentials.json
+```
+
+**Fetch Live Odds (cURL):**
+```bash
+curl "https://api.the-odds-api.com/v4/sports/soccer_epl/odds?apiKey=YOUR_KEY&regions=uk,us&markets=player_goal_scorer"
+```
+
+---
+
+_Last Updated: February 21, 2026_
