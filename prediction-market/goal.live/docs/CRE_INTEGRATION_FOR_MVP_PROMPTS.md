@@ -1,4 +1,5 @@
 # CRE Integration Prompt & MVP Implementation Guide
+
 **For Developers Building Live Odds Mock CRE Service**
 
 ---
@@ -8,6 +9,7 @@
 **Context:** You're building a service to capture real goalscorer odds from The Odds API during a live match, storing snapshots every 30 seconds in Google Sheets.
 
 **Prompt:**
+
 ```
 You are building a real-time odds capture service for the goal.live MVP.
 
@@ -53,6 +55,7 @@ Return: Working TS class ready for npm start
 **Context:** After the match ended and Google Sheets has 180+ rows of odds snapshots, convert to structured JSON with goalscorer metadata.
 
 **Prompt:**
+
 ```
 You are building a data consolidation service for goal.live MVP.
 
@@ -102,6 +105,7 @@ Return: Service that converts Google Sheet → MatchProfile JSON ready for mock 
 **Context:** Build an in-memory service that returns realistic odds for any match minute, pulling from real captured data. This is what the frontend calls to get odds at specific game state.
 
 **Prompt:**
+
 ```
 You are building the MockLiveOddsCREService for goal.live MVP.
 
@@ -119,49 +123,51 @@ Requirements:
    - Apply adjustments: if player scored before this minute, reduce odds 85% (0.15x multiplier)
    - Remove players who are no longer on pitch (simplify: no subs for now)
    - Example: "Haaland 2.10" at min 10, but "Haaland 1.20" at min 15 (if he scored at 12)
-   
+
 3. Method: getMatchState(atMinute: number) => { score, minute }
    - Count goals that happened before/at the minute
    - Return current score based on actual goal times
    - Example: minute 23 with goals at [12: Haaland, 20: Alvarez] = score 2-0
-   
+
 4. Method: getGoalEvents(beforeMinute: number) => GoalEvent[]
    - Return all goal events that occurred before this minute
    - Used to adjust odds and verify score
-   
+
 5. Method: resetMatch() => void
    - Reset internal state to minute 0 (for infinite replay)
-   
+
 6. Interpolation: If exact minute not in oddsTimeseries, use closest earlier snapshot
    - E.g. request minute 23, have snapshots at [10, 30] → use minute 10 snapshot
 
 Pseudo-code Logic for getOdds():
 ```
-function getOdds(atMinute) {
-  // Find closest oddsTimeseries snapshot at or before requested minute
-  snapshot = oddsTimeseries
-    .filter(s => timestampToMinute(s.timestamp) <= atMinute)
-    .sorty by time DESC
-    .first
 
-  if (!snapshot) error "No odds at minute " + atMinute
-  
-  // For each player in snapshot
-  foreach player, baseOdds in snapshot.playerOdds:
-    adjustedOdds = baseOdds
-    
+function getOdds(atMinute) {
+// Find closest oddsTimeseries snapshot at or before requested minute
+snapshot = oddsTimeseries
+.filter(s => timestampToMinute(s.timestamp) <= atMinute)
+.sorty by time DESC
+.first
+
+if (!snapshot) error "No odds at minute " + atMinute
+
+// For each player in snapshot
+foreach player, baseOdds in snapshot.playerOdds:
+adjustedOdds = baseOdds
+
     // If player scored before this minute, drop odds
     if goalscorers.exists(g => g.player == player AND g.minute <= atMinute):
       adjustedOdds = baseOdds * 0.15
-    
+
     // If player subbed off, remove (set to 0)
     if playerSubbedOff(player, atMinute):
       continue // skip this player
-    
+
     result[player] = adjustedOdds
-  
-  return result
+
+return result
 }
+
 ```
 
 Edge Cases:
@@ -187,6 +193,7 @@ Return: Production-ready service class
 **Context:** Build HTTP endpoints that frontend calls to get odds at specific game state as user scrubs through a match simulation.
 
 **Prompt:**
+
 ```
 You are building the Express API server for goal.live MVP frontend simulation.
 
@@ -209,11 +216,11 @@ Requirements:
        }
      }
    - Error: 400 if minute invalid
-   
+
    GET /api/cre/match/state
    - Query param: minute (optional)
    - Response: { minute, score: { home, away }, matchTime: "45:00" }
-   
+
    GET /api/cre/goals
    - Query param: beforeMinute (optional, default 90)
    - Response: {
@@ -223,12 +230,12 @@ Requirements:
        ],
        totalCount: 2
      }
-   
+
    POST /api/cre/match/reset
    - No params
    - Response: { success: true, minute: 0 }
    - Resets service to minute 0 for infinite replay
-   
+
    POST /api/cre/match/progress
    - Body: { toMinute: 45 }
    - Response: { success: true, state: {...} }
@@ -270,6 +277,7 @@ Return: Runnable Express server code
 **Context:** Build the UI component that lets users scrub through the match (0-90 minutes) and see odds update in real-time based on mock CRE API.
 
 **Prompt:**
+
 ```
 You are building the LiveOddsSimulator component for goal.live frontend.
 
@@ -281,26 +289,26 @@ Requirements:
       - Updates on drag
       - Display current minute in real-time
       - Shows "45'" format
-   
+
    b) Score Display
       - Format: "2 - 1"
       - Updates as minute changes
       - Shows team names above scores
       - Changes to final score at minute 90
-   
+
    c) Player Odds Grid
       - Grid layout, 2-4 columns
       - Each card shows: Player Name, Odds, Team
       - Color: Blue for odds that are active, Gray if player scored (can't score twice)
       - Click card to place bet (calls onBet callback)
       - Odds update dynamically as minute changes (useEffect dependency)
-   
+
    d) Goal Events Log
       - Shows goals scored up to current minute
       - Format: "45' - Haaland (Man City)" in red text
       - Scrollable if many goals
       - Update as minute changes
-   
+
    e) Replay Controls
       - "Reset" button → set minute to 0
       - "Play 10x Speed" button (optional) → auto-increment minute every 100ms
@@ -354,7 +362,8 @@ Return: Production-ready React component
 **Context:** Ensure frontend talks to mock CRE API correctly, handles responses, and displays real data from real match.
 
 **Prompt:**
-```
+
+````
 You are integrating the goal.live frontend with the MockLiveOddsCREService backend.
 
 Checklist:
@@ -422,9 +431,10 @@ curl -X POST localhost:3001/api/cre/match/reset
 # Browser
 open http://localhost:3000
 # Try slider, click reset, place bets
-```
+````
 
 Deliverables:
+
 - Integration fully working
 - All endpoints callable and returning correct data
 - Frontend displays odds smoothly as minute changes
@@ -432,6 +442,7 @@ Deliverables:
 - Ready for demo to hackathon judges
 
 Return: "Integration Complete ✓" with link to running instances
+
 ```
 
 ---
@@ -442,16 +453,18 @@ Return: "Integration Complete ✓" with link to running instances
 
 **Prompt:**
 ```
+
 You are building a service abstraction layer for goal.live to support mock CRE (MVP) and real CRE (future).
 
 Requirements:
+
 1. Create ICREService interface:
    interface ICREService {
-     setupMatch(): Promise<void>;
-     getOdds(atMinute: number): Promise<Record<string, number>>;
-     getMatchState(atMinute: number): Promise<MatchState>;
-     getGoalEvents(beforeMinute: number): Promise<GoalEvent[]>;
-     getPlayerLineup(team: string): Promise<Player[]>;
+   setupMatch(): Promise<void>;
+   getOdds(atMinute: number): Promise<Record<string, number>>;
+   getMatchState(atMinute: number): Promise<MatchState>;
+   getGoalEvents(beforeMinute: number): Promise<GoalEvent[]>;
+   getPlayerLineup(team: string): Promise<Player[]>;
    }
 
 2. Implement MockLiveOddsCREService implements ICREService
@@ -468,12 +481,12 @@ Requirements:
 
 4. Create CREServiceFactory:
    function getCREService(environment: 'mock' | 'real'): ICREService {
-     if (environment === 'mock') {
-       return new MockLiveOddsCREService(matchProfile);
-     } else if (environment === 'real') {
-       return new RealCREService(creEndpoint, apiKey);
-     }
-     throw new Error('Unknown environment');
+   if (environment === 'mock') {
+   return new MockLiveOddsCREService(matchProfile);
+   } else if (environment === 'real') {
+   return new RealCREService(creEndpoint, apiKey);
+   }
+   throw new Error('Unknown environment');
    }
 
 5. Environment Configuration:
@@ -484,11 +497,13 @@ Requirements:
    - CRE_API_KEY=xxx (unused for mock)
 
 6. Usage in backend:
+
    ```typescript
    const creService = getCREService(process.env.CRE_ENVIRONMENT);
    await creService.setupMatch();
    const odds = await creService.getOdds(45);
    ```
+
    ^ Same code works for BOTH mock and real!
 
 7. Upgrade Path Doc:
@@ -500,6 +515,7 @@ Requirements:
    - Frontend sees no difference
 
 Deliverables:
+
 - ICREService interface definition
 - MockLiveOddsCREService implementation (existing code, just interface-compliant)
 - RealCREService stub (throw NotImplementedError for now)
@@ -508,6 +524,7 @@ Deliverables:
 - Usage example showing mock/real swap
 
 Return: Service abstraction layer ready for production upgrade
+
 ```
 
 ---
@@ -518,21 +535,25 @@ Return: Service abstraction layer ready for production upgrade
 
 **Prompt:**
 ```
+
 Goal.Live MVP - Build Instructions
 Build from scratch with real odds data from The Odds API
 
 Prerequisites:
+
 - Node.js 18+
 - Google Cloud Service Account (JSON credentials for Google Sheets)
 - The Odds API key: 284c2661be564a872e91d8a4bb885ac9
 
 Step 0: Choose Match & Setup
+
 1. Pick an upcoming EPL match (e.g., Man City vs Newcastle this weekend)
 2. Find event ID from The Odds API
 3. Note kickoff time (UTC)
 4. Create Google Sheet named "goal-live-{match-name}"
 
 Step 1: Create Polling Service
+
 1. Create backend/services/oddsCapture.ts
    - Implement OddsCapture class from Prompt 1
    - Constructor: (apiKey, eventId, sheetId, serviceAccountJson)
@@ -545,30 +566,32 @@ Step 1: Create Polling Service
    Watch Google Sheet auto-populate with odds data
 
 Step 2: Post-Match Data Consolidation
+
 1. After match ends, wait for Google Sheet to finish syncing (~5 mins)
 2. Create data/match-profiles/{match-name}.json stub with manual data:
 
    {
-     "metadata": {
-       "eventId": "abc123",
-       "homeTeam": "Manchester City",
-       "awayTeam": "Newcastle United",
-       "kickoffTime": "2026-02-21T15:00:00Z",
-       "finalScore": { "home": 3, "away": 1 }
-     },
-     "oddsTimeseries": [...], // exported from Google Sheet via prompt 2
-     "goalscorers": [
-       { "minute": 12, "player": "Erling Haaland", "team": "Manchester City" },
-       { "minute": 34, "player": "Julian Alvarez", "team": "Manchester City" },
-       { "minute": 55, "player": "Alexander Isak", "team": "Newcastle United" },
-       { "minute": 67, "player": "Erling Haaland", "team": "Manchester City" }
-     ]
+   "metadata": {
+   "eventId": "abc123",
+   "homeTeam": "Manchester City",
+   "awayTeam": "Newcastle United",
+   "kickoffTime": "2026-02-21T15:00:00Z",
+   "finalScore": { "home": 3, "away": 1 }
+   },
+   "oddsTimeseries": [...], // exported from Google Sheet via prompt 2
+   "goalscorers": [
+   { "minute": 12, "player": "Erling Haaland", "team": "Manchester City" },
+   { "minute": 34, "player": "Julian Alvarez", "team": "Manchester City" },
+   { "minute": 55, "player": "Alexander Isak", "team": "Newcastle United" },
+   { "minute": 67, "player": "Erling Haaland", "team": "Manchester City" }
+   ]
    }
 
 3. Verify: node scripts/exportMatchProfile.ts
    Should output complete MatchProfile to data/match-profiles/{name}.json
 
 Step 3: Build Mock CRE Service
+
 1. Create backend/services/mockCREService.ts
    - Implement LiveOddsMockCREService from Prompt 3
    - Load match profile in constructor
@@ -583,6 +606,7 @@ Step 3: Build Mock CRE Service
    - reset() clears state
 
 Step 4: Build Express API Server
+
 1. Create backend/server.ts
    - Implement endpoints from Prompt 4
    - Initialize LiveOddsMockCREService
@@ -590,7 +614,7 @@ Step 4: Build Express API Server
    - Error handling middleware
 
 2. Run:
-   npm start  # Starts on port 3001
+   npm start # Starts on port 3001
 
 3. Test endpoints:
    curl http://localhost:3001/api/cre/odds?minute=0
@@ -598,6 +622,7 @@ Step 4: Build Express API Server
    curl http://localhost:3001/api/cre/goals?beforeMinute=45
 
 Step 5: Build React Frontend
+
 1. Create frontend/src/components/LiveOddsSimulator.tsx
    - Implement component from Prompt 5
    - Time slider, score display, player odds grid
@@ -607,9 +632,10 @@ Step 5: Build React Frontend
    onBet(player, odds) → POST /api/bets/{matchId} in Supabase
 
 3. Run:
-   npm start  # Starts on port 3000
+   npm start # Starts on port 3000
 
 Step 6: Integration Testing
+
 1. Start both servers:
    Terminal 1: cd backend && npm start
    Terminal 2: cd frontend && npm start
@@ -635,6 +661,7 @@ Step 6: Integration Testing
    [ ] Place bets: "Penalty formula applies, matches live odds"
 
 Directory Structure:
+
 ```
 backend/
   server.ts
@@ -662,14 +689,16 @@ docs/
 ```
 
 Timing:
+
 - Data capture: 90 minutes (during match)
 - Post-processing: 1 hour
 - Service development: 4 hours
 - Frontend development: 3 hours
 - Integration testing: 1 hour
-= 8 hours total (1 business day)
+  = 8 hours total (1 business day)
 
 Deployment:
+
 - Local dev: npm start (both servers)
 - Demo day: Point judges to http://<server-ip>:3000
 - Judges can use slider to explore match at any minute
@@ -684,6 +713,7 @@ Success Criteria:
 ✓ Judges can understand the flow within 30 seconds
 
 Ready to build? Pick your match!
+
 ```
 
 ---
@@ -754,3 +784,4 @@ When judges ask "Where did the odds come from?" you say:
 
 **That's not a hackathon project. That's a real system.**
 
+```

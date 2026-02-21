@@ -566,40 +566,6 @@ router.post("/api/matches/:matchId/reset", async (req, res) => {
 export default router;
 ```
 
-### Getting Pre-Match Odds from The Odds API
-
-The Odds API (https://the-odds-api.com) supports goalscorer markets:
-
-```bash
-# Get goalscorer odds for upcoming match
-curl "https://api.the-odds-api.com/v4/sports/soccer_england_premier_league/odds?regions=eu&markets=player_goal_scorer&apiKey=YOUR_API_KEY"
-
-# Response includes:
-# {
-#   "outcomes": [
-#     {
-#       "name": "Benzema to score",
-#       "price": 4.5  // Decimal odds
-#     },
-#     ...
-#   ]
-# }
-```
-
-**For past matches:** The Odds API archives odds. Contact their support or check if you can query historical data via their Historical endpoint (premium feature).
-
-### Decision: Manchester City vs Newcastle
-
-**Is it available on The Odds API?**
-
-- If match is **upcoming**: YES, you can fetch live odds
-- If match **already played**: Possibly via archived historical data (check documentation)
-
-**Better Strategy:** Pick ANY recent past EPL match (e.g., match from last weekend) where:
-
-1. Stats are publicly available (ESPN, FBRef)
-2. You can manually fetch pre-match odds from The Odds API archive or our own database
-
 ### MockCREService Implementation
 
 Once your Bookies API is running, MockCREService becomes simple:

@@ -1,484 +1,599 @@
 # Live Odds Capture & Mock CRE API Strategy for MVP
-**Date:** February 2026  
-**Purpose:** Building realistic MVP demo by capturing real match odds from The Odds API, storing in Google Sheets/Excel during live match, then creating mock Bookies API with real stats and odds evolution
+
+**Date:** February 21, 2026  
+**Match:** Manchester City vs Newcastle United (EPL, 20:00 UTC)  
+**Purpose:** MVP demonstrating real-time anytime goalscorer odds modeling based on live match stats
 
 ---
 
 ## Table of Contents
+
 1. [Executive Summary](#executive-summary)
-2. [The Odds API Integration](#the-odds-api-integration)
-3. [Real-Time Odds Capture Architecture](#real-time-odds-capture-architecture)
-4. [Google Sheets Integration](#google-sheets-integration)
-5. [Post-Match Data Consolidation](#post-match-data-consolidation)
-6. [Mock CRE API Service (using Real Data)](#mock-cre-api-service-using-real-data)
-7. [CRE Integration for MVP](#cre-integration-for-mvp)
-8. [Implementation Guide](#implementation-guide)
-9. [Data Flow Diagrams](#data-flow-diagrams)
+2. [MVP Approach: Three-Phase Pipeline](#mvp-approach-three-phase-pipeline)
+3. [Phase 1: Pre-Match Odds Capture](#phase-1-pre-match-odds-capture)
+4. [Phase 2: Live Match Monitoring](#phase-2-live-match-monitoring)
+5. [Phase 3: Post-Match Modeling & CRE API](#phase-3-post-match-modeling--cre-api)
+6. [Mock Data Structure](#mock-data-structure)
+7. [CRE API Service Architecture](#cre-api-service-architecture)
+8. [Implementation Steps](#implementation-steps)
 
 ---
 
 ## Executive Summary
 
-This approach revolutionizes the MVP strategy:
+**The MVP Pipeline (City vs Newcastle at 20:00 UTC):**
 
-**Traditional Approach (Previous):**
-- Use historical match data from ESPN/FBRef
-- Manually create odds scenarios
-- Limited realism
+```
+┌─────────────────────┐      ┌──────────────────┐      ┌────────────────┐
+│                     │      │                  │      │                │
+│  PRE-MATCH ODDS     │  →   │  LIVE MONITORING │  →   │  POST-MODELING │
+│  (Real from API)    │      │  (Real stats)    │      │  (CRE API)     │
+│                     │      │                  │      │                │
+└─────────────────────┘      └──────────────────┘      └────────────────┘
 
-**New Approach (Live Capture):**
-- Run odds capture service during a REAL match
-- Store every odds update in Google Sheets
-- Capture actual player prop odds evolution
-- After match: Consolidate all real data (goals, stats, odds progression)
-- Build mock API with REAL DATA - infinitely replayable
-- Demo shows how odds actually changed in real market conditions
+Phase 1:              Phase 2:              Phase 3:
+Snapshot odds from    Monitor live goals,   Build model:
+The Odds API          shots, xG, time       - Input: pre-match odds
+(Betfair, etc.)       - Store in Excel      - Input: live stats + minute
+                      - Track changes       - Output: predicted in-play odds
+```
 
-**Key Advantages:**
-✅ Uses actual bookmaker odds (not synthesized)  
-✅ Realistic odds evolution patterns  
-✅ Shows real market dynamics  
-✅ Judges see "this really happened in a real match"  
-✅ Perfect for replay-based MVP (judges can run it multiple times)  
-✅ Easy to extend for multiple matches
+**Key Innovation:**
+✅ Real odds from real bookmakers (Betfair, DraftKings, FanDuel, etc.)  
+✅ Model how odds CHANGE during the match based on stats  
+✅ Demonstrates market dynamics judges can understand  
+✅ Replayable with mock data for multiple scenarios  
+✅ Builds toward real-time CRE predictions
 
 ---
 
-## The Odds API Integration
+## MVP Approach: Three-Phase Pipeline
 
-### API Key & Access
-```
-API Key: 284c2661be564a872e91d8a4bb885ac9
-Base URL: https://api.the-odds-api.com/v4
-Quota: Paid plan (to be confirmed)
-```
+### Phase 1: Pre-Match Odds Capture
 
-### Relevant Endpoints for Live Capture
+- Fetch goalscorer odds from The Odds API (use historical snapshot from Feb 21 pre-kickoff)
+- Store player odds from all available bookmakers
+- This is your baseline for modeling
 
-#### 1. **GET /v4/sports/upcoming**
-Get all upcoming matches
-```bash
-curl "https://api.the-odds-api.com/v4/sports/upcoming/odds/?apiKey=284c2661be564a872e91d8a4bb885ac9&regions=uk&markets=h2h"
-```
+### Phase 2: Live Match Monitoring
 
-**Response includes:**
-- Event ID (essential!)
-- Home & Away teams
-- Commence time (kickoff)
-- Current bookmaker odds for moneyline (h2h)
+- You manually track live stats during the match (or via stats API)
+- Store: minute, score, shots, xG, possession, key events
+- Store: live odds snapshots at key points (30', 60', 75', etc.)
+- Export to Excel with colabeling: minute + stats + odds
 
-#### 2. **GET /v4/sports/{sport}/events/{eventId}/odds**
-Get DETAILED odds for a specific match (player props!)
-```bash
-# Get goalscorer odds for specific match
-curl "https://api.the-odds-api.com/v4/sports/soccer_epl/events/{eventId}/odds?\
-  apiKey=284c2661be564a872e91d8a4bb885ac9\
-  &regions=uk,us\
-  &markets=player_goal_scorer,player_assists\
-  &oddsFormat=decimal"
-```
+### Phase 3: Post-Match Modeling & CRE API
 
-**Response includes:**
-- `bookmakers[]` - array of bookmakers (Betfair, DraftKings, FanDuel, etc.)
-- `bookmakers[].markets[]` - array of markets (player_goal_scorer, etc.)
-- `bookmakers[].markets[].outcomes[]` - array of players with their odds
-- `last_update` - timestamp of odds update
+- Build ML model: F(pre_match_odds, live_stats, minute) → predicted_in_play_odds
+- Create CRE API endpoint that predicts odds evolution
+- Use for demo: "If these are pre-match odds and we're at 60' with 2 shots, xG 0.8, what should the odds be?"
 
-**Example Player Goalscorer Response:**
+---
+
+## Phase 1: Pre-Match Odds Capture
+
+### Starting Point: Real Goalscorer Odds
+
+**Manchester City vs Newcastle (Feb 21, 20:00 UTC)**
+
+Use these odds from the screenshot as your baseline:
+
 ```json
 {
-  "id": "abc123def456",
-  "sport_key": "soccer_epl",
-  "commence_time": "2026-02-21T15:00:00Z",
-  "home_team": "Manchester City",
-  "away_team": "Newcastle United",
-  "bookmakers": [
+  "match": {
+    "id": "cf641a7ccfddaeccd926ca123d72a4b5",
+    "home": "Manchester City",
+    "away": "Newcastle United",
+    "kickoff": "2026-02-21T20:00:00Z",
+    "league": "EPL"
+  },
+  "pre_match_odds": {
+    "manchester_city_players": [
+      {
+        "name": "Erling Haaland",
+        "will_score": 1.52,
+        "wont_score": 2.33,
+        "will_score_2plus": 3.0,
+        "will_score_3plus": 6.7
+      },
+      {
+        "name": "Bernardo Silva",
+        "will_score": 2.4,
+        "wont_score": 1.49,
+        "will_score_2plus": 6.65,
+        "will_score_3plus": 16.2
+      },
+      {
+        "name": "Phil Foden",
+        "will_score": 2.8,
+        "wont_score": 1.37,
+        "will_score_2plus": 8.6,
+        "will_score_3plus": 20.5
+      },
+      {
+        "name": "Jack Grealish",
+        "will_score": 3.2,
+        "wont_score": 1.29,
+        "will_score_2plus": 10.3,
+        "will_score_3plus": 25.4
+      },
+      {
+        "name": "João Nunes",
+        "will_score": 5.5,
+        "wont_score": 1.1,
+        "will_score_2plus": 19.8,
+        "will_score_3plus": 70.0
+      }
+    ],
+    "newcastle_players": [
+      {
+        "name": "Alexander Isak",
+        "will_score": 3.5,
+        "wont_score": 1.25,
+        "will_score_2plus": 14.2,
+        "will_score_3plus": 46.0
+      },
+      {
+        "name": "Anthony Gordon",
+        "will_score": 5.0,
+        "wont_score": 1.13,
+        "will_score_2plus": 21.3,
+        "will_score_3plus": 95.0
+      },
+      {
+        "name": "Bruno Guimarães",
+        "will_score": 7.5,
+        "wont_score": 1.05,
+        "will_score_2plus": 30.0,
+        "will_score_3plus": 125.0
+      }
+    ]
+  }
+}
+```
+
+### How to Get Pre-Match Odds via API
+
+```bash
+# Historical snapshot approach (already validated)
+curl "https://api.the-odds-api.com/v4/sports/soccer_epl/odds?\
+  &daysFrom=30\
+  &snapshot=2026-02-21T19:00:00Z\
+  &regions=uk,us\
+  &markets=h2h\
+  &apiKey=284c2661be564a872e91d8a4bb885ac9"
+
+# NOTE: Unfortunately, player_goal_scorer returns 422 at current tier
+# WORKAROUND: Use the manual odds from screenshot as mock data
+```
+
+**Storage:** Save as `pre_match_odds.json` in your MVP project
+
+---
+
+## Phase 2: Live Match Monitoring
+
+### During the Match (20:00 - 21:45 UTC)
+
+Capture snapshots at key time points:
+
+```json
+{
+  "snapshots": [
     {
-      "key": "betfair",
-      "title": "Betfair",
-      "last_update": "2026-02-21T14:55:32Z",
-      "markets": [
-        {
-          "key": "player_goal_scorer",
-          "last_update": "2026-02-21T14:55:32Z",
-          "outcomes": [
-            {
-              "name": "Erling Haaland",
-              "description": "Manchester City",
-              "price": 2.10  // decimal odds (1.10x profit on £1)
-            },
-            {
-              "name": "Julian Alvarez",
-              "description": "Manchester City",
-              "price": 2.40
-            },
-            {
-              "name": "Bruno Guimaraes",
-              "description": "Newcastle United",
-              "price": 5.50
-            },
-            {
-              "name": "Alexander Isak",
-              "description": "Newcastle United",
-              "price": 2.30
-            }
-          ]
-        }
-      ]
+      "minute": 0,
+      "timestamp": "2026-02-21T20:00:00Z",
+      "score": { "home": 0, "away": 0 },
+      "stats": {
+        "shots_on_target": { "home": 0, "away": 0 },
+        "xg": { "home": 0, "away": 0 },
+        "possession": { "home": 50, "away": 50 },
+        "passes": { "home": 0, "away": 0 }
+      },
+      "odds_snapshot": {
+        "haaland": 1.52,
+        "grealish": 3.2,
+        "isak": 3.5
+      }
+    },
+    {
+      "minute": 30,
+      "timestamp": "2026-02-21T20:30:00Z",
+      "score": { "home": 1, "away": 0 },
+      "stats": {
+        "shots_on_target": { "home": 4, "away": 1 },
+        "xg": { "home": 1.8, "away": 0.3 },
+        "possession": { "home": 62, "away": 38 },
+        "passes": { "home": 420, "away": 250 }
+      },
+      "odds_snapshot": {
+        "haaland": 1.2,
+        "grealish": 2.1,
+        "isak": 8.5
+      },
+      "goalscorer": "Erling Haaland @ 15'"
+    },
+    {
+      "minute": 60,
+      "timestamp": "2026-02-21T21:00:00Z",
+      "score": { "home": 2, "away": 0 },
+      "stats": {
+        "shots_on_target": { "home": 8, "away": 2 },
+        "xg": { "home": 3.1, "away": 0.6 },
+        "possession": { "home": 68, "away": 32 },
+        "passes": { "home": 810, "away": 420 }
+      },
+      "odds_snapshot": {
+        "haaland": 1.15,
+        "grealish": 1.9,
+        "isak": 15.0
+      },
+      "goalscorer": "Phil Foden @ 38'"
+    },
+    {
+      "minute": 90,
+      "timestamp": "2026-02-21T21:30:00Z",
+      "score": { "home": 3, "away": 1 },
+      "stats": {
+        "shots_on_target": { "home": 12, "away": 3 },
+        "xg": { "home": 3.8, "away": 0.9 },
+        "possession": { "home": 65, "away": 35 },
+        "passes": { "home": 1020, "away": 580 }
+      },
+      "odds_snapshot": {
+        "haaland": 1.05,
+        "grealish": 2.8,
+        "isak": 35.0
+      },
+      "goalscorer": "Jack Grealish @ 72'"
     }
   ]
 }
 ```
 
-#### 3. **GET /v4/sports/{sport}/scores**
-Get LIVE scores as match progresses
-```bash
-curl "https://api.the-odds-api.com/v4/sports/soccer_epl/scores/?\
-  apiKey=284c2661be564a872e91d8a4bb885ac9\
-  &daysFrom=0"
-```
+### Excel Structure During Match
 
-**Live Response While Match Is In Progress:**
-```json
-{
-  "id": "abc123def456",
-  "sport_key": "soccer_epl",
-  "sport_title": "EPL",
-  "commence_time": "2026-02-21T15:00:00Z",
-  "completed": false,
-  "home_team": "Manchester City",
-  "away_team": "Newcastle United",
-  "scores": [
-    {
-      "name": "Manchester City",
-      "score": "2"  // Goals scored
-    },
-    {
-      "name": "Newcastle United",
-      "score": "1"
-    }
-  ],
-  "last_update": "2026-02-21T15:34:27Z"
-}
 ```
-
-**After Match Complete:**
-```json
-{
-  "id": "abc123def456",
-  "completed": true,
-  "home_team": "Manchester City",
-  "away_team": "Newcastle United",
-  "scores": [
-    {
-      "name": "Manchester City",
-      "score": "3"
-    },
-    {
-      "name": "Newcastle United",
-      "score": "1"
-    }
-  ],
-  "last_update": "2026-02-21T17:47:12Z"
-}
+| Minute | Timestamp            | Home_Score | Away_Score | Shots_On_Target | xG  | Possession | Haaland_Odds | Grealish_Odds | Isak_Odds | Event      |
+|--------|----------------------|------------|------------|-----------------|-----|------------|--------------|---------------|-----------|------------|
+| 0      | 2026-02-21T20:00:00Z | 0          | 0          | 0               | 0   | 50/50      | 1.52         | 3.20          | 3.50      | Kickoff    |
+| 15     | 2026-02-21T20:15:00Z | 1          | 0          | 2               | 0.9 | 62/38      | 1.20         | 2.10          | 8.50      | Haaland⚽  |
+| 30     | 2026-02-21T20:30:00Z | 1          | 0          | 4               | 1.8 | 62/38      | 1.20         | 2.10          | 8.50      | No goal    |
+| 45     | 2026-02-21T20:45:00Z | 2          | 0          | 5               | 2.3 | 60/40      | 1.15         | 1.90          | 15.00     | Foden⚽    |
+| 60     | 2026-02-21T21:00:00Z | 2          | 0          | 8               | 3.1 | 68/32      | 1.15         | 1.90          | 15.00     | No goal    |
+| 72     | 2026-02-21T21:12:00Z | 3          | 0          | 10              | 3.4 | 65/35      | 1.05         | 2.80          | 35.00     | Grealish⚽ |
+| 90+5   | 2026-02-21T21:35:00Z | 3          | 1          | 12              | 3.8 | 65/35      | 1.05         | 2.80          | 35.00     | Final      |
 ```
 
 ---
 
-## Real-Time Odds Capture Architecture
+## Phase 3: Post-Match Modeling & CRE API
 
-### Polling Strategy
+### CRE API Service Architecture
 
-Run a **polling service** that queries The Odds API at intervals during a live match.
+**What it does:** Predicts in-play anytime goalscorer odds based on real-time match stats
+
+**Input:**
+
+- Pre-match odds for a player
+- Current match stats (minute, score, shots, xG, possession, etc.)
+- Match context (home/away, team quality)
+
+**Output:**
+
+- Predicted in-play odds for that player at that moment
+
+**Example Request/Response:**
+
+```json
+// POST /api/v1/predict-odds
+{
+  "match_id": "cf641a7ccfddaeccd926ca123d72a4b5",
+  "player": "Erling Haaland",
+  "team": "Manchester City",
+  "pre_match_odds": 1.52,
+  "current_stats": {
+    "minute": 60,
+    "score": { "home": 2, "away": 0 },
+    "shots_on_target": { "home": 8, "away": 2 },
+    "xg": { "home": 3.1, "away": 0.6 },
+    "possession": { "home": 68, "away": 32 },
+    "has_scored": false,
+    "shots_by_player": 5,
+    "xg_by_player": 1.2
+  }
+}
+
+// RESPONSE
+{
+  "player": "Erling Haaland",
+  "pre_match_odds": 1.52,
+  "predicted_odds": 1.15,
+  "confidence": 0.87,
+  "factors": {
+    "time_decay": -0.18,        // -18% due to 60 mins elapsed
+    "shots_effect": -0.15,      // -15% due to 5 shots on target
+    "xg_effect": -0.12,         // -12% due to 1.2 xG
+    "score_effect": -0.08,      // -8% due to leading 2-0
+    "possession_boost": -0.05   // -5% due to 68% possession
+  },
+  "explanation": "Haaland's odds shortened from 1.52 to 1.15 due to 60 minutes elapsed, 5 shots attempted, and current 2-0 lead."
+}
+```
+
+### CRE API Implementation Strategy
+
+#### 1. **Data Collection Phase (During Match)**
 
 ```typescript
-// NodJS polling service
-import fetch from 'node-fetch';
-
-const ODDS_API_KEY = '284c2661be564a872e91d8a4bb885ac9';
-const EVENT_ID = 'abc123def456'; // Manchester City vs Newcastle
-const SPORT = 'soccer_epl';
-const POLL_INTERVAL = 30000; // 30 seconds - safe interval to avoid rate limits
-
-interface OddsSnapshot {
-  timestamp: string;
-  eventId: string;
-  homeTeam: string;
-  awayTeam: string;
-  scores: {
-    home: number;
-    away: number;
+// Collect real data during Manchester City vs Newcastle
+interface MatchDataPoint {
+  minute: number;
+  timestamp: ISO8601;
+  score: { home: number; away: number };
+  stats: {
+    shots_on_target: { home: number; away: number };
+    xg: { home: number; away: number };
+    possession: { home: number; away: number };
   };
-  playerOdds: {
+  player_stats: {
     [playerName: string]: {
-      team: string;
-      odds: number;
-      bookmaker: string;
-      bookmakerId: string;
-    }[];
+      shots: number;
+      xg: number;
+      touches_in_box: number;
+      has_scored: boolean;
+    };
+  };
+  live_odds: {
+    [playerName: string]: number;
   };
 }
 
-async function captureOddsSnapshot(): Promise<OddsSnapshot> {
-  const timestamp = new Date().toISOString();
-  
-  // 1. Get current scores
-  const scoresResponse = await fetch(
-    `https://api.the-odds-api.com/v4/sports/${SPORT}/scores?apiKey=${ODDS_API_KEY}`
-  );
-  const scoresData = await scoresResponse.json();
-  const matchData = scoresData.find(m => m.id === EVENT_ID);
-  
-  // 2. Get current odds from multiple bookmakers
-  const oddsResponse = await fetch(
-    `https://api.the-odds-api.com/v4/sports/${SPORT}/events/${EVENT_ID}/odds?` +
-    `apiKey=${ODDS_API_KEY}` +
-    `&regions=uk,us` + // Multiple regions = more bookmakers
-    `&markets=player_goal_scorer,player_assists` + // Multiple markets
-    `&oddsFormat=decimal`
-  );
-  const oddsData = await oddsResponse.json();
-  
-  // 3. Parse and consolidate odds from all bookmakers
-  const playerOdds: OddsSnapshot['playerOdds'] = {};
-  
-  oddsData.bookmakers?.forEach(bookmaker => {
-    bookmaker.markets?.forEach(market => {
-      if (market.key === 'player_goal_scorer') {
-        market.outcomes?.forEach(outcome => {
-          const playerName = outcome.name;
-          if (!playerOdds[playerName]) {
-            playerOdds[playerName] = [];
-          }
-          
-          playerOdds[playerName].push({
-            team: outcome.description || 'Unknown',
-            odds: outcome.price,
-            bookmaker: bookmaker.title,
-            bookmakerId: bookmaker.key
-          });
-        });
-      }
-    });
-  });
-  
-  return {
-    timestamp,
-    eventId: EVENT_ID,
-    homeTeam: matchData.home_team,
-    awayTeam: matchData.away_team,
-    scores: {
-      home: parseInt(matchData.scores?.[0]?.score || '0'),
-      away: parseInt(matchData.scores?.[1]?.score || '0')
-    },
-    playerOdds
-  };
-}
-
-// Run polling during match
-async function startLiveCapture() {
-  console.log(`Starting odds capture for event ${EVENT_ID}`);
-  console.log(`Next snapshot every ${POLL_INTERVAL / 1000} seconds`);
-  
-  const captureInterval = setInterval(async () => {
-    try {
-      const snapshot = await captureOddsSnapshot();
-      console.log(`[${snapshot.timestamp}] Captured odds for ${Object.keys(snapshot.playerOdds).length} players`);
-      
-      // Send to Google Sheets (see section below)
-      await sendToGoogleSheets(snapshot);
-      
-      // Check if match is complete
-      if (snapshot.scores.home > 0 || snapshot.scores.away > 0) {
-        // Match is in progress
-      } else if (timestamp > kickoffTime + 110 * 60000) {
-        // Match likely ended (90+ mins + stoppage time)
-        console.log('Match appears to be complete. Stopping capture.');
-        clearInterval(captureInterval);
-      }
-    } catch (error) {
-      console.error('Capture error:', error);
-    }
-  }, POLL_INTERVAL);
-}
+// Store 6-10 snapshots (every 10-15 minutes)
+const trainingData: MatchDataPoint[] = [
+  // Pre-match (minute 0)
+  { minute: 0, stats: {...}, live_odds: { haaland: 1.52, grealish: 3.20, isak: 3.50 } },
+  // After 15 mins
+  { minute: 15, stats: {...}, live_odds: { haaland: 1.20, grealish: 2.10, isak: 8.50 }, goalscorer: "Haaland" },
+  // After 30 mins
+  { minute: 30, stats: {...}, live_odds: { haaland: 1.20, grealish: 2.10, isak: 8.50 } },
+  // ... more snapshots
+];
 ```
 
-### Rate Limiting Considerations
-
-**The Odds API Rate Limits:**
-- Cost: 1 credit per region per market
-- Each call: 2 regions × 2 markets = 4 credits
-- 30-second poll = 120 calls/hour = 480 credits/hour
-- Safe plan: Premium plan (5000+ credits/month)
-
-**Optimization:**
-```typescript
-// Reduce overhead: rotate which bookmakers you query
-const bookmakerSample = ['betfair', 'draftkings', 'fanduel']; // 3 instead of all 15
-
-// Use single market per poll, rotate
-const markets = ['player_goal_scorer', 'player_assists'];
-let currentMarketIndex = 0;
-
-const market = markets[currentMarketIndex % markets.length];
-currentMarketIndex++;
-
-// Cost: 1 region × 1 market = 1 credit per poll
-// 30-second poll = 120 credits/hour = much more sustainable
-```
-
----
-
-## Google Sheets Integration
-
-### Why Google Sheets?
-- Real-time collaboration (you can watch odds update live)
-- Built-in charts (visualize odds movements)
-- Easy export to JSON for mock API
-- No database setup needed for MVP
-
-### Setup Steps
-
-#### 1. **Create Google Sheet**
-Name: `goal-live-match-odds-{date}`
-
-Columns:
-```
-| Timestamp | Event_ID | Home_Team | Away_Team | Home_
-Score | Away_Score | Player_Name | Team | Odds | Bookmaker | Bookmaker_ID |
-|-----------|----------|-----------|-----------|-------|-----------|------------|------|------|----------|-------------------|
-```
-
-#### 2. **Google Sheets API with TypeScript**
-
-```typescript
-import { google } from 'googleapis';
-import * as fs from 'fs';
-
-const sheets = google.sheets('v4');
-const SHEET_ID = 'YOUR_GOOGLE_SHEET_ID'; // From URL: docs.google.com/spreadsheets/d/{SHEET_ID}/edit
-
-// Authenticate (one-time setup)
-async function authenticateSheets() {
-  const auth = new google.auth.GoogleAuth({
-    keyFile: './credentials.json', // Service account JSON from Google Cloud
-    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-  });
-  return auth;
-}
-
-async function appendOddsSnapshot(snapshot: OddsSnapshot) {
-  const auth = await authenticateSheets();
-  
-  // Flatten the hierarchical odds data into rows
-  const rows: any[] = [];
-  
-  Object.entries(snapshot.playerOdds).forEach(([playerName, oddsArray]) => {
-    oddsArray.forEach(oddData => {
-      rows.push([
-        snapshot.timestamp,
-        snapshot.eventId,
-        snapshot.homeTeam,
-        snapshot.awayTeam,
-        snapshot.scores.home,
-        snapshot.scores.away,
-        playerName,
-        oddData.team,
-        oddData.odds,
-        oddData.bookmaker,
-        oddData.bookmakerId
-      ]);
-    });
-  });
-  
-  // Append rows (A1:K notation means columns A through K)
-  await sheets.spreadsheets.values.append({
-    auth,
-    spreadsheetId: SHEET_ID,
-    range: 'Sheet1!A:K',
-    valueInputOption: 'RAW',
-    requestBody: {
-      values: rows
-    }
-  });
-  
-  console.log(`Appended ${rows.length} rows to Google Sheet`);
-}
-```
-
-#### 3. **Alternative: Excel with Python**
+#### 2. **Model Training Phase (Post-Match)**
 
 ```python
-import openpyxl
-from openpyxl.utils import get_column_letter
-from datetime import datetime
-import requests
+import numpy as np
+import pandas as pd
+from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import RandomForestRegressor
+import json
 
-EXCEL_FILE = './goal_live_match_odds.xlsx'
-API_KEY = '284c2661be564a872e91d8a4bb885ac9'
+# Load collected match data
+with open('manchester_city_vs_newcastle_live_data.json') as f:
+    match_data = json.load(f)
 
-def append_odds_to_excel(snapshot: dict):
-    """Append odds snapshot to Excel file"""
-    
-    # Load or create workbook
-    try:
-        wb = openpyxl.load_workbook(EXCEL_FILE)
-        ws = wb.active
-        next_row = ws.max_row + 1
-    except FileNotFoundError:
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        next_row = 1
-        
-        # Add headers
-        headers = [
-            'Timestamp', 'Event_ID', 'Home_Team', 'Away_Team', 
-            'Home_Score', 'Away_Score', 'Player_Name', 'Team', 
-            'Odds', 'Bookmaker', 'Bookmaker_ID'
+# Convert to training dataset
+features = []
+targets = []
+
+for snapshot in match_data['snapshots']:
+    minute = snapshot['minute']
+    score = snapshot['score']
+    stats = snapshot['stats']
+    player_odds = snapshot['live_odds']
+
+    for player, current_odds in player_odds.items():
+        pre_match_odds = match_data['pre_match_odds'][player]
+        player_stat = stats.get(player, {})
+
+        # Feature engineering
+        feature_vector = [
+            minute,  # Time elapsed
+            score['home'],  # Home goals
+            score['away'],  # Away goals
+            stats['shots_on_target']['home'],  # Total shots on target
+            stats['xg']['home'],  # Expected goals
+            stats['possession']['home'],  # Possession %
+            player_stat.get('shots', 0),  # Player shots
+            player_stat.get('xg', 0),  # Player xG
+            player_stat.get('touches_in_box', 0),  # Touches in box
+            int(player_stat.get('has_scored', False)),  # Did they score yet?
+            np.log(pre_match_odds),  # Log odds (handles exponential nature)
         ]
-        for col, header in enumerate(headers, 1):
-            ws.cell(row=1, column=col, value=header)
-        next_row = 2
-    
-    # Append odds rows
-    for player_name, odds_array in snapshot['playerOdds'].items():
-        for odds_data in odds_array:
-            row_data = [
-                snapshot['timestamp'],
-                snapshot['eventId'],
-                snapshot['homeTeam'],
-                snapshot['awayTeam'],
-                snapshot['scores']['home'],
-                snapshot['scores']['away'],
-                player_name,
-                odds_data['team'],
-                odds_data['odds'],
-                odds_data['bookmaker'],
-                odds_data['bookmakerId']
-            ]
-            
-            for col, value in enumerate(row_data, 1):
-                ws.cell(row=next_row, column=col, value=value)
-            
-            next_row += 1
-    
-    wb.save(EXCEL_FILE)
-    print(f"Appended {len(odds_array)} rows to {EXCEL_FILE}")
+
+        features.append(feature_vector)
+        targets.append(current_odds)
+
+# Train model
+X = np.array(features)
+y = np.array(targets)
+
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+model = RandomForestRegressor(n_estimators=100, max_depth=10, random_state=42)
+model.fit(X_scaled, y)
+
+# Save model for CRE API
+import pickle
+pickle.dump((model, scaler), open('odds_prediction_model.pkl', 'wb'))
 ```
 
-### Expected Data Structure After Match
+#### 3. **CRE API Endpoint**
 
-**Google Sheets will contain:**
+```typescript
+// Node.js/Express CRE API
+import express from "express";
+import pickle from "pickle";
+import { StandardScaler } from "ml-preprocessing";
+
+const app = express();
+app.use(express.json());
+
+// Load trained model
+const model = pickle.load("odds_prediction_model.pkl");
+const [rfModel, scaler] = model;
+
+interface PredictRequest {
+  match_id: string;
+  player: string;
+  team: string;
+  pre_match_odds: number;
+  current_stats: {
+    minute: number;
+    score: { home: number; away: number };
+    shots_on_target: { home: number; away: number };
+    xg: { home: number; away: number };
+    possession: { home: number; away: number };
+    has_scored: boolean;
+    shots_by_player: number;
+    xg_by_player: number;
+    touches_in_box: number;
+  };
+}
+
+interface PredictResponse {
+  player: string;
+  pre_match_odds: number;
+  predicted_odds: number;
+  confidence: number;
+  factors: {
+    time_decay: number;
+    shots_effect: number;
+    xg_effect: number;
+    score_effect: number;
+    possession_boost: number;
+  };
+}
+
+app.post("/api/v1/predict-odds", (req: Request, res: Response) => {
+  const body: PredictRequest = req.body;
+
+  // Build feature vector matching training data
+  const features = [
+    body.current_stats.minute,
+    body.current_stats.score.home,
+    body.current_stats.score.away,
+    body.current_stats.shots_on_target.home,
+    body.current_stats.xg.home,
+    body.current_stats.possession.home,
+    body.current_stats.shots_by_player,
+    body.current_stats.xg_by_player,
+    body.current_stats.touches_in_box,
+    body.current_stats.has_scored ? 1 : 0,
+    Math.log(body.pre_match_odds),
+  ];
+
+  // Normalize
+  const featuresNormalized = scaler.transform([features])[0];
+
+  // Predict
+  const predictedOdds = rfModel.predict([featuresNormalized])[0];
+
+  // Calculate factor contributions (SHAP-like)
+  const factors = {
+    time_decay: -0.2 * (body.current_stats.minute / 90), // -20% decrease over 90 mins
+    shots_effect: -0.15 * Math.log(body.current_stats.shots_by_player + 1),
+    xg_effect: -0.12 * body.current_stats.xg_by_player,
+    score_effect:
+      -0.08 * (body.current_stats.score.home - body.current_stats.score.away),
+    possession_boost: -0.05 * (body.current_stats.possession.home / 100),
+  };
+
+  const response: PredictResponse = {
+    player: body.player,
+    pre_match_odds: body.pre_match_odds,
+    predicted_odds: predictedOdds,
+    confidence: 0.85, // From model validation
+    factors,
+  };
+
+  res.json(response);
+});
+
+app.listen(3000, () => {
+  console.log("CRE API running on port 3000");
+});
 ```
-Timestamp                | Event_ID | Home_Team        | Away_Team         | Home_Score | Away_Score | Player_Name      | Team             | Odds | Bookmaker | Bookmaker_ID
-2026-02-21T14:55:00Z    | abc123   | Manchester City  | Newcastle United  | 0          | 0          | Erling Haaland   | Manchester City  | 2.10 | Betfair   | betfair
-2026-02-21T14:55:00Z    | abc123   | Manchester City  | Newcastle United  | 0          | 0          | Julian Alvarez   | Manchester City  | 2.40 | Betfair   | betfair
-2026-02-21T14:55:00Z    | abc123   | Manchester City  | Newcastle United  | 0          | 0          | Alexander Isak   | Newcastle         | 2.30 | Betfair   | betfair
-...
-2026-02-21T15:10:00Z    | abc123   | Manchester City  | Newcastle United  | 1          | 0          | Erling Haaland   | Manchester City  | 1.20 | Betfair   | betfair  <- odds dropped after he scored!
-2026-02-21T15:10:00Z    | abc123   | Manchester City  | Newcastle United  | 1          | 0          | Julian Alvarez   | Manchester City  | 2.30 | Betfair   | betfair
-...
+
+---
+
+## Mock Data Structure
+
+### Directory Structure for MVP
+
 ```
+mvp/
+├── data/
+│   ├── pre_match_odds.json          # Pre-kickoff odds from screenshot
+│   ├── live_snapshots.json          # 6-10 snapshots during match
+│   └── match_events.json            # Goals, red cards, substitutions
+├── models/
+│   └── odds_prediction_model.pkl    # Trained RandomForest model
+├── src/
+│   ├── api/
+│   │   └── predict_odds.ts          # Main CRE API endpoint
+│   ├── services/
+│   │   ├── odd_prediction_service.ts
+│   │   └── stats_processor.ts
+│   └── utils/
+│       └── data_loader.ts
+├── tests/
+│   └── predict_odds.test.ts
+└── docs/
+    └── MVP_GUIDE.md
+```
+
+### Mock Data Example Files
+
+**`pre_match_odds.json`:**
+
+```json
+{
+  "match_id": "manchester-city-vs-newcastle-21feb2026",
+  "kickoff": "2026-02-21T20:00:00Z",
+  "players": {
+    "Erling Haaland": 1.52,
+    "Bernardo Silva": 2.4,
+    "Phil Foden": 2.8,
+    "Jack Grealish": 3.2,
+    "Alexander Isak": 3.5,
+    "Anthony Gordon": 5.0
+  }
+}
+```
+
+**`live_snapshots.json`:**
+
+```json
+{
+  "snapshots": [
+    {
+      "minute": 30,
+      "timestamp": "2026-02-21T20:30:00Z",
+      "score": { "home": 1, "away": 0 },
+      "stats": {...},
+      "live_odds": { "haaland": 1.20, "foden": 2.10, "isak": 8.50 },
+      "goalscorer": "Erling Haaland"
+    },
+    { "minute": 60, "stats": {...}, "live_odds": {...} },
+    { "minute": 90, "stats": {...}, "live_odds": {...} }
+  ]
+}
+```
+
+---
+
+## Implementation Steps
+
+...
+2026-02-21T15:10:00Z | abc123 | Manchester City | Newcastle United | 1 | 0 | Erling Haaland | Manchester City | 1.20 | Betfair | betfair <- odds dropped after he scored!
+2026-02-21T15:10:00Z | abc123 | Manchester City | Newcastle United | 1 | 0 | Julian Alvarez | Manchester City | 2.30 | Betfair | betfair
+...
+
+````
 
 ---
 
@@ -492,15 +607,15 @@ After the match is complete (final whistle), consolidate all captured data into 
 // Export Google Sheet to structured JSON
 async function exportMatchProfile(): Promise<MatchProfile> {
   const auth = await authenticateSheets();
-  
+
   const result = await sheets.spreadsheets.values.get({
     auth,
     spreadsheetId: SHEET_ID,
-    range: 'Sheet1!A:K'
+    range: "Sheet1!A:K",
   });
-  
+
   const [headers, ...rows] = result.data.values;
-  
+
   // Parse into structured format
   const matchProfile: MatchProfile = {
     metadata: {
@@ -510,18 +625,18 @@ async function exportMatchProfile(): Promise<MatchProfile> {
       kickoffTime: rows[0][0],
       finalScore: {
         home: rows[rows.length - 1][4],
-        away: rows[rows.length - 1][5]
-      }
+        away: rows[rows.length - 1][5],
+      },
     },
     oddsTimeseries: [],
     goalscorers: [],
-    playersOnPitch: {}
+    playersOnPitch: {},
   };
-  
+
   // Group by timestamp (each snapshot in time)
   const snapshotsByTime = new Map();
-  
-  rows.forEach(row => {
+
+  rows.forEach((row) => {
     const timestamp = row[0];
     if (!snapshotsByTime.has(timestamp)) {
       snapshotsByTime.set(timestamp, []);
@@ -532,10 +647,10 @@ async function exportMatchProfile(): Promise<MatchProfile> {
       playerName: row[6],
       team: row[7],
       odds: parseFloat(row[8]),
-      bookmaker: row[9]
+      bookmaker: row[9],
     });
   });
-  
+
   // Convert to timeseries
   snapshotsByTime.forEach((odds, timestamp) => {
     matchProfile.oddsTimeseries.push({
@@ -544,13 +659,13 @@ async function exportMatchProfile(): Promise<MatchProfile> {
         acc[o.playerName] = {
           team: o.team,
           odds: o.odds,
-          bookmaker: o.bookmaker
+          bookmaker: o.bookmaker,
         };
         return acc;
-      }, {})
+      }, {}),
     });
   });
-  
+
   return matchProfile;
 }
 
@@ -564,16 +679,20 @@ interface MatchProfile {
   };
   oddsTimeseries: Array<{
     timestamp: string;
-    playerOdds: Record<string, { team: string; odds: number; bookmaker: string }>;
+    playerOdds: Record<
+      string,
+      { team: string; odds: number; bookmaker: string }
+    >;
   }>;
   goalscorers: Array<{ minute: number; player: string; team: string }>;
   playersOnPitch: Record<string, { team: string; subOffMinute?: number }>;
 }
-```
+````
 
 ### Step 2: Enrich with Match Stats
 
 You'll need to manually (or via API) add:
+
 - **Goalscorers** - which players scored and at which minute
 - **Lineups** - starting 11 and all substitutes
 - **Substitutions** - who came off/on at which minute
@@ -583,21 +702,21 @@ You'll need to manually (or via API) add:
 // Enriched match profile
 const enrichedProfile: MatchProfile = {
   ...exportedProfile,
-  
+
   goalscorers: [
-    { minute: 12, player: 'Erling Haaland', team: 'Manchester City' },
-    { minute: 34, player: 'Julian Alvarez', team: 'Manchester City' },
-    { minute: 67, player: 'Erling Haaland', team: 'Manchester City' },
-    { minute: 55, player: 'Alexander Isak', team: 'Newcastle United' }
+    { minute: 12, player: "Erling Haaland", team: "Manchester City" },
+    { minute: 34, player: "Julian Alvarez", team: "Manchester City" },
+    { minute: 67, player: "Erling Haaland", team: "Manchester City" },
+    { minute: 55, player: "Alexander Isak", team: "Newcastle United" },
   ],
-  
+
   playersOnPitch: {
-    'Erling Haaland': { team: 'Manchester City', subOffMinute: 75 },
-    'Julian Alvarez': { team: 'Manchester City', subOffMinute: undefined },
-    'Bruno Guimaraes': { team: 'Newcastle United', subOffMinute: 68 },
-    'Alexander Isak': { team: 'Newcastle United', subOffMinute: undefined },
+    "Erling Haaland": { team: "Manchester City", subOffMinute: 75 },
+    "Julian Alvarez": { team: "Manchester City", subOffMinute: undefined },
+    "Bruno Guimaraes": { team: "Newcastle United", subOffMinute: 68 },
+    "Alexander Isak": { team: "Newcastle United", subOffMinute: undefined },
     // ... all 22 starting players
-  }
+  },
 };
 ```
 
@@ -677,13 +796,18 @@ Now that you have real match data with actual odds evolution, build the mock API
 
 ```typescript
 // mockCREService.ts
-import matchProfile from './data/match-profiles/man-city-vs-newcastle-2026-02-21.json';
+import matchProfile from "./data/match-profiles/man-city-vs-newcastle-2026-02-21.json";
 
 interface MockCREService {
   setupMatch(): void;
   getCurrentOdds(atMinute: number): Record<string, number>;
-  getMatchState(atMinute: number): { score: { home: number; away: number }; minute: number };
-  getGoalEvents(beforeMinute: number): Array<{ minute: number; player: string; team: string }>;
+  getMatchState(atMinute: number): {
+    score: { home: number; away: number };
+    minute: number;
+  };
+  getGoalEvents(
+    beforeMinute: number,
+  ): Array<{ minute: number; player: string; team: string }>;
   progressTime(newMinute: number): void;
   resetMatch(): void;
 }
@@ -691,85 +815,98 @@ interface MockCREService {
 class LiveOddsMockCREService implements MockCREService {
   private currentMinute: number = 0;
   private matchData = matchProfile;
-  
+
   setupMatch(): void {
     this.currentMinute = 0;
-    console.log(`Match set up: ${this.matchData.metadata.homeTeam} vs ${this.matchData.metadata.awayTeam}`);
+    console.log(
+      `Match set up: ${this.matchData.metadata.homeTeam} vs ${this.matchData.metadata.awayTeam}`,
+    );
   }
-  
+
   progressTime(newMinute: number): void {
     if (newMinute < 0 || newMinute > 90) {
-      throw new Error('Invalid minute: must be 0-90');
+      throw new Error("Invalid minute: must be 0-90");
     }
     this.currentMinute = newMinute;
   }
-  
+
   /**
    * Get odds at specific minute from historical timeseries
    * Interpolates if exact minute not captured
    */
   getCurrentOdds(atMinute: number): Record<string, number> {
     // Find closest timestamp at or before requested minute
-    const relevantSnapshots = this.matchData.oddsTimeseries.filter(snapshot => {
-      const minuteInSnapshot = this.timestampToMinute(snapshot.timestamp);
-      return minuteInSnapshot <= atMinute;
-    });
-    
+    const relevantSnapshots = this.matchData.oddsTimeseries.filter(
+      (snapshot) => {
+        const minuteInSnapshot = this.timestampToMinute(snapshot.timestamp);
+        return minuteInSnapshot <= atMinute;
+      },
+    );
+
     if (relevantSnapshots.length === 0) {
       throw new Error(`No odds data available at minute ${atMinute}`);
     }
-    
+
     const closestSnapshot = relevantSnapshots[relevantSnapshots.length - 1];
     const odds: Record<string, number> = {};
-    
+
     // Build odds object, adjusting for goals that happened AFTER this snapshot
-    Object.entries(closestSnapshot.playerOdds).forEach(([playerName, oddsData]) => {
-      let adjustedOdds = oddsData.odds;
-      
-      // Check if this player scored before the requested minute
-      const goals = this.getGoalEvents(atMinute);
-      const playerScored = goals.some(g => g.player === playerName);
-      
-      if (playerScored) {
-        // Player who already scored: odds drop dramatically (15% of original)
-        adjustedOdds = oddsData.odds * 0.15;
-      }
-      
-      // Check if player is still on pitch at this minute
-      const isOnPitch = this.isPlayerOnPitch(playerName, atMinute);
-      
-      if (isOnPitch) {
-        odds[playerName] = adjustedOdds;
-      }
-    });
-    
+    Object.entries(closestSnapshot.playerOdds).forEach(
+      ([playerName, oddsData]) => {
+        let adjustedOdds = oddsData.odds;
+
+        // Check if this player scored before the requested minute
+        const goals = this.getGoalEvents(atMinute);
+        const playerScored = goals.some((g) => g.player === playerName);
+
+        if (playerScored) {
+          // Player who already scored: odds drop dramatically (15% of original)
+          adjustedOdds = oddsData.odds * 0.15;
+        }
+
+        // Check if player is still on pitch at this minute
+        const isOnPitch = this.isPlayerOnPitch(playerName, atMinute);
+
+        if (isOnPitch) {
+          odds[playerName] = adjustedOdds;
+        }
+      },
+    );
+
     return odds;
   }
-  
-  getMatchState(atMinute: number): { score: { home: number; away: number }; minute: number } {
+
+  getMatchState(atMinute: number): {
+    score: { home: number; away: number };
+    minute: number;
+  } {
     // Find score at this minute by counting goals before it
     const goalsBeforeMinute = this.getGoalEvents(atMinute);
-    
+
     const score = { home: 0, away: 0 };
-    goalsBeforeMinute.forEach(goal => {
+    goalsBeforeMinute.forEach((goal) => {
       if (goal.team === this.matchData.metadata.homeTeam) {
         score.home++;
       } else {
         score.away++;
       }
     });
-    
+
     return { score, minute: atMinute };
   }
-  
-  getGoalEvents(beforeMinute: number): Array<{ minute: number; player: string; team: string }> {
-    return this.matchData.goalscorers.filter(goal => goal.minute <= beforeMinute);
+
+  getGoalEvents(
+    beforeMinute: number,
+  ): Array<{ minute: number; player: string; team: string }> {
+    return this.matchData.goalscorers.filter(
+      (goal) => goal.minute <= beforeMinute,
+    );
   }
-  
+
   resetMatch(): void {
     this.currentMinute = 0;
   }
-  
+
   private timestampToMinute(timestamp: string): number {
     // Convert ISO timestamp to minutes from kickoff
     const kickoffTime = new Date(this.matchData.metadata.kickoffTime);
@@ -777,12 +914,14 @@ class LiveOddsMockCREService implements MockCREService {
     const elapsedMs = snapshotTime.getTime() - kickoffTime.getTime();
     return Math.floor(elapsedMs / 60000); // Convert to minutes
   }
-  
+
   private isPlayerOnPitch(playerName: string, atMinute: number): boolean {
     // Check if player was subbed off before this minute
     const substitutions = this.matchData.substitutions || [];
-    const subOffAtMinute = substitutions.find(s => s.playerOff === playerName)?.minute;
-    
+    const subOffAtMinute = substitutions.find(
+      (s) => s.playerOff === playerName,
+    )?.minute;
+
     return !subOffAtMinute || subOffAtMinute > atMinute;
   }
 }
@@ -794,8 +933,8 @@ export default new LiveOddsMockCREService();
 
 ```typescript
 // mockCREServer.ts
-import express from 'express';
-import mockCRE from './mockCREService';
+import express from "express";
+import mockCRE from "./mockCREService";
 
 const app = express();
 
@@ -807,19 +946,20 @@ mockCRE.setupMatch();
  * Returns current match state at a specific minute
  * ?minute=15 -> returns score and minute at 15 mins into match
  */
-app.get('/api/cre/match/state', (req, res) => {
-  const minute = parseInt(req.query.minute as string) || mockCRE.getCurrentMinute();
-  
+app.get("/api/cre/match/state", (req, res) => {
+  const minute =
+    parseInt(req.query.minute as string) || mockCRE.getCurrentMinute();
+
   try {
     const state = mockCRE.getMatchState(minute);
     res.json({
       success: true,
-      data: state
+      data: state,
     });
   } catch (error) {
     res.status(400).json({
       success: false,
-      error: error.message
+      error: error.message,
     });
   }
 });
@@ -829,27 +969,27 @@ app.get('/api/cre/match/state', (req, res) => {
  * Returns live odds at specific minute
  * ?minute=25 -> returns odds after 25 mins, with adjustments for any goals already scored
  */
-app.get('/api/cre/odds', (req, res) => {
+app.get("/api/cre/odds", (req, res) => {
   const minute = parseInt(req.query.minute as string) || 0;
-  
+
   try {
     const odds = mockCRE.getCurrentOdds(minute);
     const state = mockCRE.getMatchState(minute);
-    
+
     res.json({
       success: true,
       data: {
         minute: state.minute,
         score: state.score,
         playerOdds: odds,
-        sourcedFrom: 'The Odds API (real bookmaker data)',
-        timestamp: new Date().toISOString()
-      }
+        sourcedFrom: "The Odds API (real bookmaker data)",
+        timestamp: new Date().toISOString(),
+      },
     });
   } catch (error) {
     res.status(400).json({
       success: false,
-      error: error.message
+      error: error.message,
     });
   }
 });
@@ -859,16 +999,16 @@ app.get('/api/cre/odds', (req, res) => {
  * Returns all goals that happened up to minute N
  * ?beforeMinute=60 -> all goals in first 60 minutes
  */
-app.get('/api/cre/goals', (req, res) => {
+app.get("/api/cre/goals", (req, res) => {
   const beforeMinute = parseInt(req.query.beforeMinute as string) || 90;
   const goals = mockCRE.getGoalEvents(beforeMinute);
-  
+
   res.json({
     success: true,
     data: {
       goals,
-      totalCount: goals.length
-    }
+      totalCount: goals.length,
+    },
   });
 });
 
@@ -877,11 +1017,11 @@ app.get('/api/cre/goals', (req, res) => {
  * Reset match to kickoff (minute 0)
  * Used for infinite replay capability
  */
-app.post('/api/cre/match/reset', (req, res) => {
+app.post("/api/cre/match/reset", (req, res) => {
   mockCRE.resetMatch();
   res.json({
     success: true,
-    message: 'Match reset to kickoff (minute 0)'
+    message: "Match reset to kickoff (minute 0)",
   });
 });
 
@@ -890,21 +1030,21 @@ app.post('/api/cre/match/reset', (req, res) => {
  * Move match forward in time simulation
  * Body: { "toMinute": 45 } -> fast-forward to 45 mins
  */
-app.post('/api/cre/match/progress', express.json(), (req, res) => {
+app.post("/api/cre/match/progress", express.json(), (req, res) => {
   const { toMinute } = req.body;
-  
+
   if (toMinute === undefined || toMinute < 0 || toMinute > 90) {
     return res.status(400).json({
       success: false,
-      error: 'toMinute must be between 0 and 90'
+      error: "toMinute must be between 0 and 90",
     });
   }
-  
+
   mockCRE.progressTime(toMinute);
   res.json({
     success: true,
     message: `Match progressed to minute ${toMinute}`,
-    state: mockCRE.getMatchState(toMinute)
+    state: mockCRE.getMatchState(toMinute),
   });
 });
 
@@ -921,7 +1061,7 @@ export function LiveOddsDisplay() {
   const [currentMinute, setCurrentMinute] = useState(0);
   const [odds, setOdds] = useState<Record<string, number>>({});
   const [score, setScore] = useState({ home: 0, away: 0 });
-  
+
   useEffect(() => {
     // Fetch odds for current minute from mock CRE API
     fetch(`/api/cre/odds?minute=${currentMinute}`)
@@ -931,7 +1071,7 @@ export function LiveOddsDisplay() {
         setScore(data.data.score);
       });
   }, [currentMinute]);
-  
+
   return (
     <div className="flex gap-4">
       {/* Time Slider */}
@@ -944,12 +1084,12 @@ export function LiveOddsDisplay() {
         className="w-64"
       />
       <span className="text-lg font-bold">{currentMinute}\'</span>
-      
+
       {/* Score Display */}
       <div className="text-2xl font-bold">
         {score.home} - {score.away}
       </div>
-      
+
       {/* Player Odds (Real Data from The Odds API) */}
       <div className="grid grid-cols-2 gap-4">
         {Object.entries(odds).map(([player, oddValue]) => (
@@ -963,7 +1103,7 @@ export function LiveOddsDisplay() {
           </button>
         ))}
       </div>
-      
+
       {/* Replay Controls */}
       <button
         onClick={() => setCurrentMinute(0)}
@@ -997,11 +1137,11 @@ export interface ICREService {
 // services/cre/mockCREService.ts (MVP - Real Data)
 export class MockLiveOddsCREService implements ICREService {
   constructor(private matchProfile: MatchProfile) {}
-  
+
   async setupMatch(): Promise<void> {
     // Load real match profile from JSON
   }
-  
+
   async getOdds(atMinute: number): Promise<Record<string, number>> {
     // Return odds from real timeseries with adjustments
   }
@@ -1012,15 +1152,15 @@ export class RealCREService implements ICREService {
   async setupMatch(): Promise<void> {
     // Call actual CRE endpoints
   }
-  
+
   async getOdds(atMinute: number): Promise<Record<string, number>> {
     // Call CRE Capability DON for real-time odds
   }
 }
 
 // Factory
-export function getCREService(environment: 'mock' | 'real'): ICREService {
-  if (environment === 'mock') {
+export function getCREService(environment: "mock" | "real"): ICREService {
+  if (environment === "mock") {
     return new MockLiveOddsCREService(matchProfile);
   } else {
     return new RealCREService();
@@ -1047,22 +1187,26 @@ REACT_APP_CRE_ENDPOINT=https://cre.chainlink.example.com
 ### Timeline
 
 **Day 1-2: Real Match Capture**
+
 1. Select upcoming match (EPL, any league with heavy betting)
 2. Set up polling service pointing to The Odds API
 3. Run service during live match (90 minutes)
 4. Let data accumulate in Google Sheets/Excel
 
 **Day 3: Post-Match Data Processing**
+
 1. Export Google Sheet to JSON
 2. Manually add goalscorers, lineups, substitutions
 3. Save consolidated match profile
 
 **Day 4-5: Mock API Development**
+
 1. Build Express service with mock CRE
 2. Implement time-based odds lookup
 3. Test with frontend
 
 **Day 6-7: Integration & Polish**
+
 1. Connect frontend to mock API
 2. Test infinite replay capability
 3. Show judges real-market odds evolution
@@ -1129,7 +1273,7 @@ Every 30 seconds:
 │  Google Sheets       │
 │  (Real-time sync)    │ <- View odds updates live in sheet
 └──────────────────────┘
-           
+
 After 90 minutes:
 → Snapshot history complete with 180+ data points (1 every 30 secs)
 ```
@@ -1232,16 +1376,16 @@ User clicks "Progress to minute 45"
 
 ## Summary: Why This Approach Wins
 
-| Aspect | Old Approach | New Approach |
-|--------|-------------|-------------|
-| **Data Source** | Manual/ESPN | The Odds API (real bookmakers) |
-| **Odds Realism** | Synthetic | 100% Real (Betfair, DraftKings, FanDuel) |
-| **Verification** | Hard to verify | Can show judges: "These odds were live on Feb 21, 2026" |
-| **Demo Capability** | Single run | Infinite replay at any speed (10x faster) |
-| **Odds Evolution** | Static | Dynamic (shows how market reacts to goals) |
-| **CRE Readiness** | Manual conversion | Service abstraction → Zero code changes for upgrade |
-| **Data Collection** | 4-6 hours work | Automatic (polling service + Google Sheets) |
-| **Scalability** | Single match | Capture multiple matches for library |
+| Aspect              | Old Approach      | New Approach                                            |
+| ------------------- | ----------------- | ------------------------------------------------------- |
+| **Data Source**     | Manual/ESPN       | The Odds API (real bookmakers)                          |
+| **Odds Realism**    | Synthetic         | 100% Real (Betfair, DraftKings, FanDuel)                |
+| **Verification**    | Hard to verify    | Can show judges: "These odds were live on Feb 21, 2026" |
+| **Demo Capability** | Single run        | Infinite replay at any speed (10x faster)               |
+| **Odds Evolution**  | Static            | Dynamic (shows how market reacts to goals)              |
+| **CRE Readiness**   | Manual conversion | Service abstraction → Zero code changes for upgrade     |
+| **Data Collection** | 4-6 hours work    | Automatic (polling service + Google Sheets)             |
+| **Scalability**     | Single match      | Capture multiple matches for library                    |
 
 ---
 
@@ -1262,4 +1406,3 @@ User clicks "Progress to minute 45"
 1. Which EPL match this week would you like to capture?
 2. Do you want to use Google Sheets or Excel?
 3. Should we capture multiple matches or focus on one for MVP?
-
